@@ -96,6 +96,20 @@ export function createSharedDb(dialect: SqlDialect): Db {
       return toCount(row?.last_ledger);
     },
 
+    async getBackfillStartLedger() {
+      const row = await dialect.get<{ start_ledger: SqlParam }>(
+        "SELECT start_ledger FROM backfill_cursor WHERE id = 1",
+      );
+      return toCount(row?.start_ledger);
+    },
+
+    async setBackfillStartLedger(seq) {
+      await dialect.run(
+        "UPDATE backfill_cursor SET start_ledger = ? WHERE id = 1",
+        [seq],
+      );
+    },
+
     async setBackfillLedger(seq) {
       await dialect.run(
         "UPDATE backfill_cursor SET last_ledger = ? WHERE id = 1",
