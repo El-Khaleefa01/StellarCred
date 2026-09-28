@@ -49,6 +49,12 @@ export interface Db {
   /** Persist the last fully ingested ledger sequence. */
   setLastLedger(seq: number): void | Promise<void>;
 
+  /** Return the last fully completed historical backfill ledger (0 if none). */
+  getBackfillLedger(): number | Promise<number>;
+
+  /** Persist the historical backfill checkpoint. */
+  setBackfillLedger(seq: number): void | Promise<void>;
+
   /**
    * Delete all claims whose ledger_sequence is strictly greater than `fromLedger`.
    * Used during reorg reconciliation to roll back un-final data.
