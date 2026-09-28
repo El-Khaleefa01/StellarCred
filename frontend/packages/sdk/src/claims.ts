@@ -891,7 +891,7 @@ export async function hasClaims(wallet: string, types: readonly ClaimType[], opt
     const indexed = await readIndexerClaims(normalizedWallet, opts?.requestTimeoutMs);
     const results: Partial<Record<ClaimType, boolean>> = {};
     for (const type of Array.from(new Set(types))) {
-      results[type] = indexed.some((claim) => indexerMatchesClaim(claim, type, opts?.minThresholds?.[type], opts?.trustedIssuers]));
+      results[type] = indexed.some((claim) => indexerMatchesClaim(claim, type, opts?.minThresholds?.[type], opts?.trustedIssuers));
     }
     if (_config.indexer.mode === "cache") return results;
     return hasClaimsOnChain(normalizedWallet, types, opts);
@@ -902,13 +902,13 @@ export async function hasClaims(wallet: string, types: readonly ClaimType[], opt
 }
 
 /** Optional indexer-backed list of active claims. Verify mode confirms on-chain. */
-export async function getClaims(wallet: string, opts?: Pick<ClaimOptions, "throwOnError" | "requestTimeoutMs" | "retryOptions">): Promise<Claim[]> {
+export async function getClaims(wallet: string, opts?: Pick<ClaimOptions, "trustedIssuers" | "throwOnError" | "requestTimeoutMs" | "retryOptions">): Promise<Claim[]> {
   if (!_config.indexer) return getClaimsOnChain(wallet, opts);
   const throwOnError = opts?.throwOnError === true;
   try {
     const normalizedWallet = await normalizeAndValidateWallet(wallet);
     const indexed = await readIndexerClaims(normalizedWallet, opts?.requestTimeoutMs);
-    if (_config.indexer.mode === "cache") return activeIndexerClaims(indexed);
+    if (_config.indexer.mode === "cache") return activeIndexerClaims(indexed, opts?.trustedIssuers);
     return getClaimsOnChain(normalizedWallet, opts);
   } catch (error) {
     if (throwOnError) throw error;
