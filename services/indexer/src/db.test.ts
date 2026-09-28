@@ -118,6 +118,14 @@ function registerSuite(
       expect(await db.getLastLedger()).toBe(123_456);
     });
 
+    it("tracks the backfill cursor independently from live ingestion", async () => {
+      expect(await db.getBackfillLedger()).toBe(0);
+      await db.setLastLedger(500_000);
+      await db.setBackfillLedger(123_456);
+      expect(await db.getLastLedger()).toBe(500_000);
+      expect(await db.getBackfillLedger()).toBe(123_456);
+    });
+
     it("upserts a new claim and updates an existing one", async () => {
       await db.upsertClaim(makeClaim());
 
