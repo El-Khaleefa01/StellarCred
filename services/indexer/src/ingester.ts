@@ -151,6 +151,9 @@ interface HorizonContractEvent {
 
 interface HorizonEventsPage {
   _embedded: { records: HorizonContractEvent[] };
+  _links?: {
+    next?: { href: string };
+  };
 }
 
 /** Horizon root response — used to read the current ledger. */
@@ -395,9 +398,27 @@ function parseEvent(
 
 // ── Ingester ────────────────────────────────────────────────────────────────
 
+export interface BackfillProgress {
+  fromLedger: number;
+  toLedger: number;
+  currentLedger: number;
+  eventsProcessed: number;
+  pagesProcessed: number;
+  percent: number;
+}
+
 export interface Ingester {
   /** Run one ingestion cycle (fetch + write). Returns number of events processed. */
   tick(): Promise<number>;
+  /**
+   * Backfill a bounded historical range without starting the live poll loop.
+   * The DB ledger cursor is checkpointed after each completed page.
+   */
+  backfill(
+    fromLedger: number,
+    toLedger?: number,
+    onProgress?: (progress: BackfillProgress) => void,
+  ): Promise<BackfillProgress>;
   /**
    * Re-scan a bounded window of ledgers to reconcile after a detected reorg.
    * Deletes claims newer than `reorgPoint` and re-indexes up to the new head.
@@ -654,6 +675,96 @@ export function createIngester(config: Config, db: Db): Ingester {
     return processed;
   }
 
+  // ── Historical backfill ──────────────────────────────────────────────────
+
+  async function backfill(
+    fromLedger: number,
+    requestedToLedger?: number,
+    onProgress?: (progress: BackfillProgress) => void,
+  ): Promise<BackfillProgress> {
+    if (!Number.isInteger(fromLedger) || fromLedger < 1) {
+      throw new Error(`Backfill start ledger must be a positive integer, got ${fromLedger}`);
+    }
+
+    let toLedger = requestedToLedger;
+    if (toLedger === undefined) toLedger = await getLedgerHead();
+    if (!Number.isInteger(toLedger) || toLedger < fromLedger) {
+      throw new Error(`Backfill end ledger must be an integer >= start ledger; got ${toLedger}`);
+    }
+
+    const storedLedger = await db.getLastLedger();
+    let currentLedger = Math.max(fromLedger - 1, storedLedger);
+    if (currentLedger >= toLedger) {
+      const complete = { fromLedger, toLedger, currentLedger: toLedger, eventsProcessed: 0, pagesProcessed: 0, percent: 100 };
+      onProgress?.(complete);
+      return complete;
+    }
+
+    let cursor: string | undefined = currentLedger >= fromLedger ? String(currentLedger * 100_000) : undefined;
+    let eventsProcessed = 0;
+    let pagesProcessed = 0;
+
+    console.log(`[indexer] backfill starting: ${fromLedger} → ${toLedger} (resume ledger ${currentLedger})`);
+
+    while (currentLedger < toLedger) {
+      const url = new URL(`/contracts/${config.proofRegistryContractId}/events`, config.horizonUrl);
+      url.searchParams.set("order", "asc");
+      url.searchParams.set("limit", "200");
+      if (cursor !== undefined) url.searchParams.set("cursor", cursor);
+
+      const page = await fetchEventsWithRetry(url.toString(), AbortSignal.timeout(30_000));
+      const records = page._embedded?.records ?? [];
+      pagesProcessed++;
+
+      const inRange = records.filter((ev) => {
+        const ledger = typeof ev.ledger === "string" ? parseInt(ev.ledger, 10) : ev.ledger;
+        return ledger >= fromLedger && ledger <= toLedger!;
+      });
+
+      if (inRange.length > 0) {
+        eventsProcessed += await processEvents(inRange);
+        for (const ev of inRange) {
+          const ledger = typeof ev.ledger === "string" ? parseInt(ev.ledger, 10) : ev.ledger;
+          if (ledger > currentLedger) currentLedger = ledger;
+        }
+      }
+
+      const highestPageLedger = records.reduce((max, ev) => {
+        const ledger = typeof ev.ledger === "string" ? parseInt(ev.ledger, 10) : ev.ledger;
+        return Math.max(max, ledger);
+      }, currentLedger);
+      const nextHref = page._links?.next?.href;
+
+      if (highestPageLedger > toLedger) {
+        currentLedger = toLedger;
+        await db.setLastLedger(toLedger);
+      } else if (records.length === 0 || !nextHref) {
+        currentLedger = toLedger;
+        await db.setLastLedger(toLedger);
+      } else {
+        await db.setLastLedger(currentLedger);
+        const nextUrl = new URL(nextHref);
+        cursor = nextUrl.searchParams.get("cursor") ?? undefined;
+        if (!cursor) throw new Error("Horizon returned a next page without a cursor");
+      }
+
+      const progress: BackfillProgress = {
+        fromLedger,
+        toLedger,
+        currentLedger,
+        eventsProcessed,
+        pagesProcessed,
+        percent: Math.min(100, Math.round(((currentLedger - fromLedger + 1) / (toLedger - fromLedger + 1)) * 100)),
+      };
+      onProgress?.(progress);
+      console.log(`[indexer] backfill progress: ${progress.currentLedger}/${toLedger} (${progress.percent}%) — ${eventsProcessed} event(s)`);
+
+      if (currentLedger >= toLedger) break;
+    }
+
+    return { fromLedger, toLedger, currentLedger: toLedger, eventsProcessed, pagesProcessed, percent: 100 };
+  }
+
   // ── Reorg reconciliation ─────────────────────────────────────────────────
 
   /**
@@ -693,6 +804,7 @@ export function createIngester(config: Config, db: Db): Ingester {
 
   return {
     tick,
+    backfill,
     reconcile,
     start() {
       if (running) return;
