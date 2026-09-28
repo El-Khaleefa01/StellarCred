@@ -696,8 +696,14 @@ export function createIngester(config: Config, db: Db): Ingester {
       throw new Error(`Backfill end ledger must be an integer >= start ledger; got ${toLedger}`);
     }
 
+    const storedStartLedger = await db.getBackfillStartLedger();
     const storedLedger = await db.getBackfillLedger();
-    let currentLedger = Math.max(fromLedger - 1, storedLedger);
+    const sameRange = storedStartLedger === fromLedger;
+    if (!sameRange) {
+      await db.setBackfillStartLedger(fromLedger);
+      await db.setBackfillLedger(fromLedger - 1);
+    }
+    let currentLedger = sameRange ? Math.max(fromLedger - 1, storedLedger) : fromLedger - 1;
     if (currentLedger >= toLedger) {
       const complete = { fromLedger, toLedger, currentLedger: toLedger, eventsProcessed: 0, pagesProcessed: 0, percent: 100 };
       onProgress?.(complete);
