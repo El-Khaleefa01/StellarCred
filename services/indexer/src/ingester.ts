@@ -692,7 +692,7 @@ export function createIngester(config: Config, db: Db): Ingester {
       throw new Error(`Backfill end ledger must be an integer >= start ledger; got ${toLedger}`);
     }
 
-    const storedLedger = await db.getLastLedger();
+    const storedLedger = await db.getBackfillLedger();
     let currentLedger = Math.max(fromLedger - 1, storedLedger);
     if (currentLedger >= toLedger) {
       const complete = { fromLedger, toLedger, currentLedger: toLedger, eventsProcessed: 0, pagesProcessed: 0, percent: 100 };
@@ -737,12 +737,12 @@ export function createIngester(config: Config, db: Db): Ingester {
 
       if (highestPageLedger > toLedger) {
         currentLedger = toLedger;
-        await db.setLastLedger(toLedger);
+        await db.setBackfillLedger(toLedger);
       } else if (records.length === 0 || !nextHref) {
         currentLedger = toLedger;
-        await db.setLastLedger(toLedger);
+        await db.setBackfillLedger(toLedger);
       } else {
-        await db.setLastLedger(currentLedger);
+        await db.setBackfillLedger(currentLedger);
         const nextUrl = new URL(nextHref);
         cursor = nextUrl.searchParams.get("cursor") ?? undefined;
         if (!cursor) throw new Error("Horizon returned a next page without a cursor");
