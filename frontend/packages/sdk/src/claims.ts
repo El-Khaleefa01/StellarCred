@@ -10,6 +10,7 @@
 // the module graph acyclic.
 
 import { Client as ProofRegistryClient } from "../../proof-registry/src/index";
+import { fetchIndexerClaims, type IndexerClaim } from "./indexer";
 
 // ---------------------------------------------------------------------------
 // Runtime environment detection
@@ -156,6 +157,13 @@ export interface RetryOptions {
   jitter?: boolean;
 }
 
+export interface IndexerConfig {
+  /** Base URL of the indexer. Supplying this does not enable indexer reads by itself. */
+  url: string;
+  /** "cache" trusts indexed public data; "verify" confirms the answer on-chain. */
+  mode: "cache" | "verify";
+}
+
 export interface SDKConfig {
   registryId?: string;
   rpcUrl?: string;
@@ -166,9 +174,13 @@ export interface SDKConfig {
   baseDelayMs?: number;
   maxDelayMs?: number;
   jitter?: boolean;
+  /** Optional, explicit indexer read path. Omitted means chain-only reads. */
+  indexer?: IndexerConfig;
 }
 
-const DEFAULT_CONFIG: Required<SDKConfig> = {
+type RuntimeSDKConfig = Required<Omit<SDKConfig, "indexer">> & { indexer?: IndexerConfig };
+
+const DEFAULT_CONFIG: RuntimeSDKConfig = {
   registryId: env("STELLARCRED_REGISTRY_ID", "NEXT_PUBLIC_PROOF_REGISTRY_ID"),
   rpcUrl: env("STELLARCRED_RPC_URL", "NEXT_PUBLIC_RPC_URL") || _preset.rpcUrl,
   networkPassphrase:
@@ -182,9 +194,10 @@ const DEFAULT_CONFIG: Required<SDKConfig> = {
   baseDelayMs: 500,
   maxDelayMs: 5000,
   jitter: true,
+  indexer: undefined,
 };
 
-let _config: Required<SDKConfig> = { ...DEFAULT_CONFIG };
+let _config: RuntimeSDKConfig = { ...DEFAULT_CONFIG };
 
 /**
  * Override SDK defaults at runtime. Call this once at app startup before any
@@ -206,7 +219,7 @@ export function configure(opts: SDKConfig): void {
 /**
  * Read the current runtime configuration (read-only snapshot).
  */
-export function getConfig(): Readonly<Required<SDKConfig>> {
+export function getConfig(): Readonly<RuntimeSDKConfig> {
   return { ..._config };
 }
 
@@ -666,7 +679,7 @@ async function readCheckClaim(
  * Returns `true` if `wallet` has a currently-valid, unexpired proof of
  * `claimType` in the StellarCred ProofRegistry.
  */
-export async function hasClaim(
+async function hasClaimOnChain(
   wallet: string,
   claimType: string,
   opts?: ClaimOptions,
@@ -716,7 +729,7 @@ export async function hasClaim(
  * Returns the full claim record (valid, verifiedAt, expiry) for a wallet and
  * credential type, or `null` if the wallet has no current proof of that type.
  */
-export async function getClaim(
+async function getClaimOnChain(
   wallet: string,
   claimType: string,
   opts?: Pick<ClaimOptions, "trustedIssuers" | "requestTimeoutMs" | "throwOnError" | "retryOptions">,
@@ -745,7 +758,7 @@ export async function getClaim(
 /**
  * Batched form of {@link hasClaim}: checks several claim types for one wallet.
  */
-export async function hasClaims(
+async function hasClaimsOnChain(
   wallet: string,
   types: readonly ClaimType[],
   opts?: BatchClaimOptions,
@@ -800,6 +813,108 @@ export async function hasClaims(
   return results;
 }
 
+function indexerMatchesClaim(
+  claim: IndexerClaim,
+  claimType: string,
+  minThreshold?: number,
+  trustedIssuers?: string[],
+): boolean {
+  if (claim.credential_type !== claimType) return false;
+  if (claim.revoked !== 0) return false;
+  if (claim.expiry <= Math.floor(Date.now() / 1000)) return false;
+  if (trustedIssuers && trustedIssuers.length > 0 && !trustedIssuers.includes(claim.issuer)) return false;
+  if (minThreshold !== undefined) return claim.threshold !== null && claim.threshold >= minThreshold;
+  return true;
+}
+
+function activeIndexerClaims(claims: IndexerClaim[], trustedIssuers?: string[]): Claim[] {
+  const latest = new Map<string, IndexerClaim>();
+  for (const claim of claims) {
+    if (!indexerMatchesClaim(claim, claim.credential_type, undefined, trustedIssuers)) continue;
+    const current = latest.get(claim.credential_type);
+    if (!current || claim.id > current.id) latest.set(claim.credential_type, claim);
+  }
+  return Array.from(latest.values()).sort((a, b) => a.id - b.id).map((claim) => ({
+    type: claim.credential_type, verifiedAt: claim.verified_at, expiry: claim.expiry,
+  }));
+}
+
+async function readIndexerClaims(wallet: string, requestTimeoutMs?: number): Promise<IndexerClaim[]> {
+  const indexer = _config.indexer;
+  if (!indexer) {
+    throw new ConfigError("Indexer-backed reads are disabled. Configure StellarCred with an indexer URL and an explicit cache or verify mode.");
+  }
+  return fetchIndexerClaims(indexer.url, wallet, requestTimeoutMs ?? _config.requestTimeoutMs);
+}
+
+/**
+ * Optional indexer-backed claim check.
+ * cache accepts indexed public data; verify confirms the answer on-chain.
+ */
+export async function hasClaim(wallet: string, claimType: string, opts?: ClaimOptions): Promise<boolean> {
+  if (!_config.indexer) return hasClaimOnChain(wallet, claimType, opts);
+  const throwOnError = opts?.throwOnError === true;
+  try {
+    const normalizedWallet = await normalizeAndValidateWallet(wallet);
+    const indexed = await readIndexerClaims(normalizedWallet, opts?.requestTimeoutMs);
+    const indexedResult = indexed.some((claim) => indexerMatchesClaim(claim, claimType, opts?.minThreshold, opts?.trustedIssuers));
+    if (_config.indexer.mode === "cache") return indexedResult;
+    return hasClaimOnChain(normalizedWallet, claimType, opts);
+  } catch (error) {
+    if (throwOnError) throw error;
+    return false;
+  }
+}
+
+/** Optional indexer-backed full claim lookup. */
+export async function getClaim(wallet: string, claimType: string, opts?: Pick<ClaimOptions, "trustedIssuers" | "requestTimeoutMs" | "throwOnError" | "retryOptions">): Promise<{ valid: boolean; verifiedAt: number; expiry: number } | null> {
+  if (!_config.indexer) return getClaimOnChain(wallet, claimType, opts);
+  const throwOnError = opts?.throwOnError === true;
+  try {
+    const normalizedWallet = await normalizeAndValidateWallet(wallet);
+    const indexed = await readIndexerClaims(normalizedWallet, opts?.requestTimeoutMs);
+    const candidate = indexed.filter((claim) => indexerMatchesClaim(claim, claimType, undefined, opts?.trustedIssuers)).sort((a, b) => b.id - a.id)[0];
+    if (_config.indexer.mode === "cache") return candidate ? { valid: true, verifiedAt: candidate.verified_at, expiry: candidate.expiry } : null;
+    return getClaimOnChain(normalizedWallet, claimType, opts);
+  } catch (error) {
+    if (throwOnError) throw error;
+    return null;
+  }
+}
+
+/** Optional indexer-backed batch claim lookup. */
+export async function hasClaims(wallet: string, types: readonly ClaimType[], opts?: BatchClaimOptions): Promise<Partial<Record<ClaimType, boolean>>> {
+  if (!_config.indexer) return hasClaimsOnChain(wallet, types, opts);
+  const throwOnError = opts?.throwOnError === true;
+  try {
+    const normalizedWallet = await normalizeAndValidateWallet(wallet);
+    const indexed = await readIndexerClaims(normalizedWallet, opts?.requestTimeoutMs);
+    const results: Partial<Record<ClaimType, boolean>> = {};
+    for (const type of Array.from(new Set(types))) {
+      results[type] = indexed.some((claim) => indexerMatchesClaim(claim, type, opts?.minThresholds?.[type], opts?.trustedIssuers]));
+    }
+    if (_config.indexer.mode === "cache") return results;
+    return hasClaimsOnChain(normalizedWallet, types, opts);
+  } catch (error) {
+    if (throwOnError) throw error;
+    return Object.fromEntries(types.map((type) => [type, false])) as Partial<Record<ClaimType, boolean>>;
+  }
+}
+
+/** Optional indexer-backed list of active claims. Verify mode confirms on-chain. */
+export async function getClaims(wallet: string, opts?: Pick<ClaimOptions, "throwOnError" | "requestTimeoutMs" | "retryOptions">): Promise<Claim[]> {
+  if (!_config.indexer) return getClaimsOnChain(wallet, opts);
+  const throwOnError = opts?.throwOnError === true;
+  try {
+    const normalizedWallet = await normalizeAndValidateWallet(wallet);
+    const indexed = await readIndexerClaims(normalizedWallet, opts?.requestTimeoutMs);
+    if (_config.indexer.mode === "cache") return activeIndexerClaims(indexed);
+    return getClaimsOnChain(normalizedWallet, opts);
+  } catch (error) {
+    if (throwOnError) throw error;
+    return [];
+  }
+}
 /**
  * Verifies every claim in a selective-disclosure preset.
  */
@@ -829,7 +944,7 @@ export async function verifyPreset(
  * Returns every active claim a wallet has proven across all known credential
  * types.
  */
-export async function getClaims(
+async function getClaimsOnChain(
   wallet: string,
   opts?: Pick<ClaimOptions, "throwOnError" | "requestTimeoutMs" | "retryOptions">,
 ): Promise<Claim[]> {
