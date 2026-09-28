@@ -92,10 +92,20 @@ export function buildSchema(dialect: SqlDialect): Schema {
   const seedCursor = `INSERT ${dialect.insertIgnorePrefix}INTO ledger_cursor (id, last_ledger)
   VALUES (1, 0)${dialect.conflictDoNothing}`;
 
+  const backfillCursor = `CREATE TABLE IF NOT EXISTS backfill_cursor (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  ${column("last_ledger", int, { notNull: true, default: "0" })}
+)`;
+
+  const seedBackfillCursor = `INSERT ${dialect.insertIgnorePrefix}INTO backfill_cursor (id, last_ledger)
+  VALUES (1, 0)${dialect.conflictDoNothing}`;
+
   const tables = [
     claims,
     ledgerCursor,
     seedCursor,
+    backfillCursor,
+    seedBackfillCursor,
     appSubmissions,
     `CREATE INDEX IF NOT EXISTS idx_app_submissions_status
   ON app_submissions (status)`,
