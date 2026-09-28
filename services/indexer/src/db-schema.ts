@@ -111,6 +111,15 @@ export function buildSchema(dialect: SqlDialect): Schema {
   const seedBackfillCheckpoint = `INSERT ${dialect.insertIgnorePrefix}INTO backfill_checkpoint (id, start_ledger, last_ledger)
   VALUES (1, 0, 0)${dialect.conflictDoNothing}`;
 
+  // A page may end in the middle of a ledger. Persist the opaque Horizon
+  // cursor separately so resuming cannot skip the remainder of that ledger.
+  const backfillPageCursor = `CREATE TABLE IF NOT EXISTS backfill_page_cursor (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  ${column("cursor", "TEXT")}
+)`;
+  const seedBackfillPageCursor = `INSERT ${dialect.insertIgnorePrefix}INTO backfill_page_cursor (id, cursor)
+  VALUES (1, NULL)${dialect.conflictDoNothing}`;
+
   const tables = [
     claims,
     ledgerCursor,
@@ -119,6 +128,8 @@ export function buildSchema(dialect: SqlDialect): Schema {
     seedBackfillCursor,
     backfillCheckpoint,
     seedBackfillCheckpoint,
+    backfillPageCursor,
+    seedBackfillPageCursor,
     appSubmissions,
     `CREATE INDEX IF NOT EXISTS idx_app_submissions_status
   ON app_submissions (status)`,
