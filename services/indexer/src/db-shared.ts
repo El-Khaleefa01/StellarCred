@@ -117,6 +117,20 @@ export function createSharedDb(dialect: SqlDialect): Db {
       );
     },
 
+    async getBackfillCursor() {
+      const row = await dialect.get<{ cursor: string | null }>(
+        "SELECT cursor FROM backfill_page_cursor WHERE id = 1",
+      );
+      return row?.cursor ?? null;
+    },
+
+    async setBackfillCursor(cursor) {
+      await dialect.run(
+        "UPDATE backfill_page_cursor SET cursor = ? WHERE id = 1",
+        [cursor],
+      );
+    },
+
     async upsertClaim(row: ClaimInput) {
       const ex = dialect.excludedRef;
       await dialect.run(
