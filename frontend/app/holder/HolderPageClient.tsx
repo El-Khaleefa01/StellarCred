@@ -56,6 +56,7 @@ import dynamic from "next/dynamic";
 import CredentialDetailModal from "@/components/CredentialDetailModal";
 import { useToast } from "@/components/Toast";
 import { IMPORT_PARAM } from "@/lib/transfer";
+import { preflightProofGate, type ProofGateWarning } from "@/lib/proof-preflight";
 
 // The encrypted-transfer modals are heavy (crypto.ts PBKDF2/AES-GCM, QR
 // rendering) and only needed when the user actually starts a transfer — load
@@ -1115,6 +1116,24 @@ function ProofProgress({ steps }: { steps: ProgressStep[] }) {
   );
 }
 
+function ProofGateWarningPanel({ warnings, batch = false, onContinue }: { warnings: ProofGateWarning[]; batch?: boolean; onContinue: () => void }) {
+  return (
+    <div role="alert" style={{ marginBottom: "1.25rem", padding: "1rem 1.1rem", borderRadius: "var(--radius)", border: "1px solid rgba(240, 180, 60, 0.35)", background: "rgba(240, 180, 60, 0.07)" }}>
+      <div className="row" style={{ gap: "0.5rem", color: "var(--warn)", fontWeight: 600, fontSize: "0.875rem" }}>
+        <IconAlertTriangle size={15} />
+        {batch ? "Some credentials cannot satisfy this gate" : "This credential may not satisfy the requested gate"}
+      </div>
+      <p style={{ margin: "0.5rem 0 0.65rem", fontSize: "0.8rem", color: "var(--muted)", lineHeight: 1.55 }}>
+        {batch ? "The local check found these issues before the expensive proving step. The circuit remains the authority, but continuing may spend time proving a credential that the gate will reject." : "The local credential data and requested gate parameters show that this proof cannot satisfy the gate. The circuit remains the authority, but continuing may still spend time generating a proof that will be rejected."}
+      </p>
+      <ul style={{ margin: "0 0 0.9rem 1.1rem", padding: 0, fontSize: "0.8rem", color: "var(--text)", lineHeight: 1.6 }}>
+        {warnings.map((warning, index) => <li key={warning.code + "-" + index}>{warning.message}</li>)}
+      </ul>
+      <button className="btn btn-primary btn-sm" onClick={onContinue}>Continue anyway <IconArrowRight size={14} /></button>
+    </div>
+  );
+}
+
 // ── ProofFlow ─────────────────────────────────────────────────────────────────
 
 const ESTIMATES: Record<string, { range: string; expected: number; max: number }> = {
@@ -1142,11 +1161,15 @@ function ProofFlow({
   const [errorPhase, setErrorPhase] = useState<"proving" | "submitting" | null>(null);
   const [showRaw, setShowRaw] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [preflightAcknowledged, setPreflightAcknowledged] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const toast = useToast();
   const { addEvent } = useProofTimeline(cred);
+  const preflight = preflightProofGate(cred);
 
   useEffect(() => {
+    if (preflight.warnings.length > 0 && !preflightAcknowledged) return;
+
     const controller = new AbortController();
     const { signal } = controller;
 
@@ -1205,7 +1228,7 @@ function ProofFlow({
       clearInterval(timerRef.current!);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cred]);
+  }, [cred, preflightAcknowledged]);
 
   async function onSubmit() {
     if (!proof || networkMismatch) return;
@@ -1256,6 +1279,10 @@ function ProofFlow({
         <IconArrowLeft size={14} />
         All credentials
       </button>
+
+      {preflight.warnings.length > 0 && !preflightAcknowledged && (
+        <ProofGateWarningPanel warnings={preflight.warnings} onContinue={() => setPreflightAcknowledged(true)} />
+      )}
 
       {issuerGone && (
         <div
@@ -1536,7 +1563,14 @@ function BatchProofFlow({
   const [txHash, setTxHash] = useState("");
   const [batchError, setBatchError] = useState<ContractError | null>(null);
   const [showRaw, setShowRaw] = useState(false);
+  const [preflightAcknowledged, setPreflightAcknowledged] = useState(false);
   const toast = useToast();
+  const preflightWarnings = creds.flatMap((cred) =>
+    preflightProofGate(cred).warnings.map((warning) => ({
+      ...warning,
+      message: cred.title + ": " + warning.message,
+    })),
+  );
   const { networkMismatch } = useWallet();
   const generatedProofs = useRef<Array<{ proof: Uint8Array; publicInputs: Uint8Array } | null>>(
     creds.map(() => null),
@@ -1550,6 +1584,8 @@ function BatchProofFlow({
 
   // Generate proofs for all credentials in sequence.
   useEffect(() => {
+    if (preflightWarnings.length > 0 && !preflightAcknowledged) return;
+
     let cancelled = false;
     toast.info(`Generating ${creds.length} proofs…`);
 
@@ -1634,7 +1670,7 @@ function BatchProofFlow({
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [preflightAcknowledged]);
 
   // All proofs ready — fire the batch submission automatically, but never
   // while the connected wallet is on the wrong network: submission would
@@ -1701,6 +1737,10 @@ function BatchProofFlow({
         <IconArrowLeft size={14} />
         All credentials
       </button>
+
+      {preflightWarnings.length > 0 && !preflightAcknowledged && (
+        <ProofGateWarningPanel warnings={preflightWarnings} batch onContinue={() => setPreflightAcknowledged(true)} />
+      )}
 
       <div className="card" style={{ padding: "1.75rem" }}>
         <div style={{ marginBottom: "1.5rem" }}>
