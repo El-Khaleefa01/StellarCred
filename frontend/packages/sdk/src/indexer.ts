@@ -31,7 +31,7 @@ export async function fetchIndexerClaims(
   wallet: string,
   timeoutMs: number,
 ): Promise<IndexerClaim[]> {
-  const base = indexerUrl.trim().replace(/\\/$/, "");
+  const base = indexerUrl.trim().replace(/\/$/, "");
   if (!base) {
     throw new IndexerError("Indexer URL is required when indexer-backed reads are enabled");
   }
