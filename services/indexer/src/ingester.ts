@@ -610,12 +610,16 @@ export function createIngester(config: Config, db: Db): Ingester {
 
     // 3. Build the Horizon cursor. For a fresh start with startLedger
     //    configured, begin there; otherwise resume from lastLedger.
-    const cursorNum = lastLedger > 0 ? lastLedger * 100_000 : 0;
+    // Horizon paging tokens are ledger-derived 64-bit values. Use BigInt so
+    // large ledger sequences do not lose precision in JavaScript.
+    const ledgerCursor = (ledger: number): string =>
+      (BigInt(ledger + 1) * 4_294_967_296n - 1n).toString();
+
     const cursor =
       config.startLedger > 0 && lastLedger === 0
-        ? String(config.startLedger * 100_000)
-        : cursorNum > 0
-        ? String(cursorNum)
+        ? ledgerCursor(config.startLedger - 1)
+        : lastLedger > 0
+        ? ledgerCursor(lastLedger)
         : undefined;
 
     // 4. Fetch events up to the finality ceiling.
@@ -700,7 +704,12 @@ export function createIngester(config: Config, db: Db): Ingester {
       return complete;
     }
 
-    let cursor: string | undefined = currentLedger >= fromLedger ? String(currentLedger * 100_000) : undefined;
+    const ledgerCursor = (ledger: number): string =>
+      (BigInt(ledger + 1) * 4_294_967_296n - 1n).toString();
+    let cursor: string | undefined =
+      currentLedger >= fromLedger
+        ? ledgerCursor(currentLedger)
+        : ledgerCursor(fromLedger - 1);
     let eventsProcessed = 0;
     let pagesProcessed = 0;
 
