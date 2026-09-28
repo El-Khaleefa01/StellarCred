@@ -21,6 +21,7 @@ const DEFAULTS = {
   funds: 10000,
   accreditation: 1000000,
   employment: 3,
+  restricted: ["840", "364", "408"],
 };
 
 function ttlSeconds(expiry: string): number {
@@ -114,8 +115,11 @@ export function preflightProofGate(
       break;
     }
     case "employment": {
-      const threshold = numericParam(params.threshold, DEFAULTS.employment);
       const seniority = Number(credential.seniority ?? 0);
+      const threshold = numericParam(
+        params.threshold,
+        Number.isFinite(seniority) ? seniority : DEFAULTS.employment,
+      );
       if (Number.isFinite(seniority) && seniority < threshold) {
         warnings.push({
           code: "threshold",
@@ -126,7 +130,7 @@ export function preflightProofGate(
     }
     case "jurisdiction": {
       const country = String(credential.value);
-      const restricted = params.restricted ?? [];
+      const restricted = params.restricted ?? DEFAULTS.restricted;
       const isListed = restricted.includes(country);
       const allowlist = params.mode === "1";
 
