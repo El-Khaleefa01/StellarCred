@@ -94,6 +94,7 @@ export function buildSchema(dialect: SqlDialect): Schema {
 
   const backfillCursor = `CREATE TABLE IF NOT EXISTS backfill_cursor (
   id INTEGER PRIMARY KEY CHECK (id = 1),
+  ${column("start_ledger", int, { notNull: true, default: "0" })},
   ${column("last_ledger", int, { notNull: true, default: "0" })}
 )`;
 
