@@ -98,14 +98,14 @@ export function createSharedDb(dialect: SqlDialect): Db {
 
     async getBackfillStartLedger() {
       const row = await dialect.get<{ start_ledger: SqlParam }>(
-        "SELECT start_ledger FROM backfill_cursor WHERE id = 1",
+        "SELECT start_ledger FROM backfill_checkpoint WHERE id = 1",
       );
       return toCount(row?.start_ledger);
     },
 
     async setBackfillStartLedger(seq) {
       await dialect.run(
-        "UPDATE backfill_cursor SET start_ledger = ? WHERE id = 1",
+        "UPDATE backfill_checkpoint SET start_ledger = ? WHERE id = 1",
         [seq],
       );
     },
