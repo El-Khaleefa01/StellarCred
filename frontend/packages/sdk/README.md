@@ -623,3 +623,42 @@ The SDK follows [Semantic Versioning](https://semver.org/). Releases are fully a
    - Creates an official GitHub Release with release artifacts.
    - Publishes `@stellarcred/sdk` with public access to the npm registry using `NPM_TOKEN`.
 
+
+
+## Optional Indexer Claim Reads (Issue #613)
+
+The SDK is **chain-first by default**. If you do not configure `indexer`, claim reads continue to use the on-chain `ProofRegistry` simulation path.
+
+The SDK also supports an explicit indexer-backed path for applications that need faster public-data reads:
+
+```ts
+StellarCred.configure({
+  registryId: process.env.PROOF_REGISTRY_ID,
+  rpcUrl: "https://soroban-testnet.stellar.org",
+  indexer: {
+    url: "https://your-indexer.example",
+    mode: "cache",
+  },
+});
+```
+
+### Trust model
+
+- `mode: "cache"` treats the indexer as a **cache of public on-chain data**. It is not a security authority and must not be the sole basis for a security or access-control decision.
+- `mode: "verify"` first reads the indexer, then confirms the answer against `ProofRegistry` on-chain. Use this when you want the indexer integration while retaining the chain as the trust anchor.
+- Gate-critical checks should use the default chain-only path or `mode: "verify"`; a stale or compromised indexer must never be able to grant access by itself.
+
+### Verify mode
+
+```ts
+StellarCred.configure({
+  indexer: {
+    url: "https://your-indexer.example",
+    mode: "verify",
+  },
+});
+
+const verified = await StellarCred.hasClaim(wallet, "kyc");
+```
+
+The same configured read mode applies to `getClaim`, `hasClaims`, and `getClaims`. The indexer endpoint used by the SDK is `GET /claims?wallet=G...` and returns indexed public claim records.

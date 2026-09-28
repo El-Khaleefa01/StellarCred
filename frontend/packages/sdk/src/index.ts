@@ -23,6 +23,8 @@
 //   const ok = await StellarCred.hasClaim(walletAddress, "kyc");
 
 export * from "./claims";
+export { IndexerError } from "./indexer";
+export type { IndexerClaim } from "./indexer";
 export * from "./challenge";
 export { createClaimGate } from "./core";
 export type { ClaimGateConfig, ClaimGateState, ClaimGateListener, ClaimGate } from "./core";
@@ -50,6 +52,8 @@ import {
   InvalidAddressError,
   RpcError,
 } from "./claims";
+
+import { IndexerError } from "./indexer";
 
 import {
   createWalletChallenge,
@@ -80,5 +84,6 @@ export const StellarCred = {
   ConfigError,
   InvalidAddressError,
   RpcError,
+  IndexerError,
 };
 export default StellarCred;
