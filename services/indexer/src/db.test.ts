@@ -50,6 +50,7 @@ function baseConfig(overrides: Partial<Config> = {}): Config {
     rateLimitWindowMs: 60_000,
     rateLimitMax: 120,
     rateLimitEnabled: true,
+    backfillBatchSize: 200,
     ...overrides,
   } as Config;
 }

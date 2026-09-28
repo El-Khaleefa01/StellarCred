@@ -405,6 +405,14 @@ export interface BackfillProgress {
   eventsProcessed: number;
   pagesProcessed: number;
   percent: number;
+  /** Elapsed wall-clock time in seconds since the backfill started. */
+  elapsedSeconds: number;
+  /** Ledgers indexed per second (rolling average over the whole run). 0 before first page completes. */
+  ledgersPerSecond: number;
+  /** Estimated seconds remaining until toLedger is reached. null when rate is 0. */
+  etaSeconds: number | null;
+  /** Whether the backfill is still running (false when complete or interrupted). */
+  running: boolean;
 }
 
 export interface Ingester {
@@ -434,6 +442,12 @@ export interface Ingester {
   getHealth(): IngesterHealth;
   /** Get Prometheus metrics for the ingester. */
   getMetrics(): IngesterMetrics;
+  /**
+   * Return the most recent backfill progress snapshot, or null if no backfill
+   * has been started in this process lifetime. Safe to call at any time,
+   * including while a backfill is running in parallel.
+   */
+  getBackfillStatus(): BackfillProgress | null;
 }
 
 export function createIngester(config: Config, db: Db): Ingester {
@@ -445,6 +459,9 @@ export function createIngester(config: Config, db: Db): Ingester {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let inFlightTick: Promise<number> | null = null;
   const health = freshHealth();
+
+  // ── Backfill status snapshot (readable via getBackfillStatus) ────────────
+  let lastBackfillStatus: BackfillProgress | null = null;
 
   // ── Prometheus metrics state ──────────────────────────────────────────
   const startTime = Date.now();
@@ -706,8 +723,17 @@ export function createIngester(config: Config, db: Db): Ingester {
     }
     let currentLedger = sameRange ? Math.max(fromLedger - 1, storedLedger) : fromLedger - 1;
     let cursor = sameRange ? await db.getBackfillCursor() : null;
+
+    const totalLedgers = toLedger - fromLedger + 1;
+
     if (currentLedger >= toLedger) {
-      const complete = { fromLedger, toLedger, currentLedger: toLedger, eventsProcessed: 0, pagesProcessed: 0, percent: 100 };
+      const complete: BackfillProgress = {
+        fromLedger, toLedger, currentLedger: toLedger,
+        eventsProcessed: 0, pagesProcessed: 0, percent: 100,
+        elapsedSeconds: 0, ledgersPerSecond: 0, etaSeconds: null,
+        running: false,
+      };
+      lastBackfillStatus = complete;
       onProgress?.(complete);
       return complete;
     }
@@ -721,13 +747,24 @@ export function createIngester(config: Config, db: Db): Ingester {
     }
     let eventsProcessed = 0;
     let pagesProcessed = 0;
+    const backfillStartTime = Date.now();
 
     console.log(`[indexer] backfill starting: ${fromLedger} → ${toLedger} (resume ledger ${currentLedger})`);
+
+    // Publish an initial "running" status snapshot immediately.
+    lastBackfillStatus = {
+      fromLedger, toLedger, currentLedger,
+      eventsProcessed: 0, pagesProcessed: 0, percent: 0,
+      elapsedSeconds: 0, ledgersPerSecond: 0, etaSeconds: null,
+      running: true,
+    };
+
+    const batchSize = config.backfillBatchSize ?? 200;
 
     while (currentLedger < toLedger) {
       const url = new URL(`/contracts/${config.proofRegistryContractId}/events`, config.horizonUrl);
       url.searchParams.set("order", "asc");
-      url.searchParams.set("limit", "200");
+      url.searchParams.set("limit", String(batchSize));
       if (cursor !== undefined) url.searchParams.set("cursor", cursor);
 
       const page = await fetchEventsWithRetry(url.toString(), AbortSignal.timeout(30_000));
@@ -770,21 +807,49 @@ export function createIngester(config: Config, db: Db): Ingester {
         await db.setBackfillCursor(nextCursor);
       }
 
+      // ── Progress metrics ────────────────────────────────────────────────
+      const elapsedMs = Date.now() - backfillStartTime;
+      const elapsedSeconds = elapsedMs / 1000;
+      const ledgersDone = Math.max(0, currentLedger - fromLedger + 1);
+      const ledgersPerSecond = elapsedSeconds > 0 ? ledgersDone / elapsedSeconds : 0;
+      const ledgersLeft = Math.max(0, toLedger - currentLedger);
+      const etaSeconds = ledgersPerSecond > 0 ? ledgersLeft / ledgersPerSecond : null;
+      const percent = Math.min(100, Math.round((ledgersDone / totalLedgers) * 100));
+
       const progress: BackfillProgress = {
-        fromLedger,
-        toLedger,
-        currentLedger,
-        eventsProcessed,
-        pagesProcessed,
-        percent: Math.min(100, Math.round(((currentLedger - fromLedger + 1) / (toLedger - fromLedger + 1)) * 100)),
+        fromLedger, toLedger, currentLedger,
+        eventsProcessed, pagesProcessed, percent,
+        elapsedSeconds: Math.round(elapsedSeconds * 10) / 10,
+        ledgersPerSecond: Math.round(ledgersPerSecond * 10) / 10,
+        etaSeconds: etaSeconds !== null ? Math.round(etaSeconds) : null,
+        running: currentLedger < toLedger,
       };
+      lastBackfillStatus = progress;
       onProgress?.(progress);
-      console.log(`[indexer] backfill progress: ${progress.currentLedger}/${toLedger} (${progress.percent}%) — ${eventsProcessed} event(s)`);
+      console.log(
+        `[indexer] backfill progress: ${progress.currentLedger}/${toLedger}` +
+        ` (${progress.percent}%) — ${eventsProcessed} event(s)` +
+        ` | ${progress.ledgersPerSecond} ledgers/s` +
+        (progress.etaSeconds !== null ? ` | ETA ${progress.etaSeconds}s` : ""),
+      );
 
       if (currentLedger >= toLedger) break;
     }
 
-    return { fromLedger, toLedger, currentLedger: toLedger, eventsProcessed, pagesProcessed, percent: 100 };
+    const elapsedMs = Date.now() - backfillStartTime;
+    const elapsedSeconds = elapsedMs / 1000;
+    const ledgersPerSecond = elapsedSeconds > 0 ? totalLedgers / elapsedSeconds : 0;
+
+    const finalProgress: BackfillProgress = {
+      fromLedger, toLedger, currentLedger: toLedger,
+      eventsProcessed, pagesProcessed, percent: 100,
+      elapsedSeconds: Math.round(elapsedSeconds * 10) / 10,
+      ledgersPerSecond: Math.round(ledgersPerSecond * 10) / 10,
+      etaSeconds: null,
+      running: false,
+    };
+    lastBackfillStatus = finalProgress;
+    return finalProgress;
   }
 
   // ── Reorg reconciliation ─────────────────────────────────────────────────
@@ -870,6 +935,9 @@ export function createIngester(config: Config, db: Db): Ingester {
         dbWriteLatencySeconds: lastTickDurationSec,
         lag,
       };
+    },
+    getBackfillStatus() {
+      return lastBackfillStatus;
     },
   };
 }

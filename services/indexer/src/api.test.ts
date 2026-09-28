@@ -44,12 +44,18 @@ function makeIngester(overrides?: Partial<IngesterHealth>): Ingester {
   };
   return {
     tick: async () => 0,
+    backfill: async () => ({
+      fromLedger: 0, toLedger: 0, currentLedger: 0,
+      eventsProcessed: 0, pagesProcessed: 0, percent: 100,
+      elapsedSeconds: 0, ledgersPerSecond: 0, etaSeconds: null, running: false,
+    }),
     reconcile: async () => 0,
     start: () => {},
     stop: () => {},
     shutdown: async () => {},
     getHealth: () => ({ ...health }),
     getMetrics: () => ({ ...metrics }),
+    getBackfillStatus: () => null,
   };
 }
 
@@ -71,6 +77,7 @@ function makeConfig(sqlitePath: string): Config {
     rateLimitWindowMs: 60000,
     rateLimitMax: 120,
     rateLimitEnabled: true,
+    backfillBatchSize: 200,
   };
 }
 
