@@ -60,6 +60,10 @@ export interface Db {
 
   /** Persist the historical backfill checkpoint. */
   setBackfillLedger(seq: number): void | Promise<void>;
+  /** Return the exact Horizon page cursor for a resumable backfill. */
+  getBackfillCursor(): string | null | Promise<string | null>;
+  /** Persist or clear the exact Horizon page cursor for a resumable backfill. */
+  setBackfillCursor(cursor: string | null): void | Promise<void>;
 
   /**
    * Delete all claims whose ledger_sequence is strictly greater than `fromLedger`.
