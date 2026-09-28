@@ -94,12 +94,22 @@ export function buildSchema(dialect: SqlDialect): Schema {
 
   const backfillCursor = `CREATE TABLE IF NOT EXISTS backfill_cursor (
   id INTEGER PRIMARY KEY CHECK (id = 1),
-  ${column("start_ledger", int, { notNull: true, default: "0" })},
   ${column("last_ledger", int, { notNull: true, default: "0" })}
 )`;
 
   const seedBackfillCursor = `INSERT ${dialect.insertIgnorePrefix}INTO backfill_cursor (id, last_ledger)
   VALUES (1, 0)${dialect.conflictDoNothing}`;
+
+  // Range metadata lives in a new table so existing deployments using the
+  // original backfill_cursor schema do not require an ALTER TABLE migration.
+  const backfillCheckpoint = `CREATE TABLE IF NOT EXISTS backfill_checkpoint (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  ${column("start_ledger", int, { notNull: true, default: "0" })},
+  ${column("last_ledger", int, { notNull: true, default: "0" })}
+)`;
+
+  const seedBackfillCheckpoint = `INSERT ${dialect.insertIgnorePrefix}INTO backfill_checkpoint (id, start_ledger, last_ledger)
+  VALUES (1, 0, 0)${dialect.conflictDoNothing}`;
 
   const tables = [
     claims,
@@ -107,6 +117,8 @@ export function buildSchema(dialect: SqlDialect): Schema {
     seedCursor,
     backfillCursor,
     seedBackfillCursor,
+    backfillCheckpoint,
+    seedBackfillCheckpoint,
     appSubmissions,
     `CREATE INDEX IF NOT EXISTS idx_app_submissions_status
   ON app_submissions (status)`,
