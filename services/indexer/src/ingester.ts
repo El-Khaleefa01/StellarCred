@@ -702,20 +702,23 @@ export function createIngester(config: Config, db: Db): Ingester {
     if (!sameRange) {
       await db.setBackfillStartLedger(fromLedger);
       await db.setBackfillLedger(fromLedger - 1);
+      await db.setBackfillCursor(null);
     }
     let currentLedger = sameRange ? Math.max(fromLedger - 1, storedLedger) : fromLedger - 1;
+    let cursor = sameRange ? await db.getBackfillCursor() : null;
     if (currentLedger >= toLedger) {
       const complete = { fromLedger, toLedger, currentLedger: toLedger, eventsProcessed: 0, pagesProcessed: 0, percent: 100 };
       onProgress?.(complete);
       return complete;
     }
 
+    // Legacy fallback for checkpoints created before exact page cursors were
+    // persisted. New checkpoints always resume from the opaque Horizon cursor.
     const ledgerCursor = (ledger: number): string =>
       (BigInt(ledger + 1) * 4_294_967_296n - 1n).toString();
-    let cursor: string | undefined =
-      currentLedger >= fromLedger
-        ? ledgerCursor(currentLedger)
-        : ledgerCursor(fromLedger - 1);
+    if (!cursor) {
+      cursor = ledgerCursor(currentLedger >= fromLedger ? currentLedger : fromLedger - 1);
+    }
     let eventsProcessed = 0;
     let pagesProcessed = 0;
 
@@ -753,14 +756,18 @@ export function createIngester(config: Config, db: Db): Ingester {
       if (highestPageLedger > toLedger) {
         currentLedger = toLedger;
         await db.setBackfillLedger(toLedger);
+        await db.setBackfillCursor(null);
       } else if (records.length === 0 || !nextHref) {
         currentLedger = toLedger;
         await db.setBackfillLedger(toLedger);
+        await db.setBackfillCursor(null);
       } else {
         await db.setBackfillLedger(currentLedger);
         const nextUrl = new URL(nextHref);
-        cursor = nextUrl.searchParams.get("cursor") ?? undefined;
-        if (!cursor) throw new Error("Horizon returned a next page without a cursor");
+        const nextCursor = nextUrl.searchParams.get("cursor");
+        if (!nextCursor) throw new Error("Horizon returned a next page without a cursor");
+        cursor = nextCursor;
+        await db.setBackfillCursor(nextCursor);
       }
 
       const progress: BackfillProgress = {
