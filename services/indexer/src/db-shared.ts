@@ -89,6 +89,20 @@ export function createSharedDb(dialect: SqlDialect): Db {
       );
     },
 
+    async getBackfillLedger() {
+      const row = await dialect.get<{ last_ledger: SqlParam }>(
+        "SELECT last_ledger FROM backfill_cursor WHERE id = 1",
+      );
+      return toCount(row?.last_ledger);
+    },
+
+    async setBackfillLedger(seq) {
+      await dialect.run(
+        "UPDATE backfill_cursor SET last_ledger = ? WHERE id = 1",
+        [seq],
+      );
+    },
+
     async upsertClaim(row: ClaimInput) {
       const ex = dialect.excludedRef;
       await dialect.run(
