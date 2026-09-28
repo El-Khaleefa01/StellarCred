@@ -50,6 +50,7 @@ function baseConfig(overrides: Partial<Config> = {}): Config {
     rateLimitWindowMs: 60_000,
     rateLimitMax: 120,
     rateLimitEnabled: true,
+    backfillBatchSize: 200,
     ...overrides,
   } as Config;
 }
@@ -88,6 +89,8 @@ function registerSuite(
       // order-independent (delete every claim and reset the cursor).
       await db.deleteClaimsAfter(0);
       await db.setLastLedger(0);
+      await db.setBackfillStartLedger(0);
+      await db.setBackfillLedger(0);
     });
 
     afterEach(async () => {
@@ -116,6 +119,17 @@ function registerSuite(
       expect(await db.getLastLedger()).toBe(0);
       await db.setLastLedger(123_456);
       expect(await db.getLastLedger()).toBe(123_456);
+    });
+
+    it("tracks the backfill cursor independently from live ingestion", async () => {
+      expect(await db.getBackfillStartLedger()).toBe(0);
+      expect(await db.getBackfillLedger()).toBe(0);
+      await db.setLastLedger(500_000);
+      await db.setBackfillStartLedger(100_000);
+      await db.setBackfillLedger(123_456);
+      expect(await db.getLastLedger()).toBe(500_000);
+      expect(await db.getBackfillStartLedger()).toBe(100_000);
+      expect(await db.getBackfillLedger()).toBe(123_456);
     });
 
     it("upserts a new claim and updates an existing one", async () => {

@@ -600,6 +600,24 @@ export function buildApp(db: Db, ingester: Ingester, config?: Partial<Config>): 
     })
   );
 
+  // ── GET /backfill/status ──────────────────────────────────────────────────
+  // Returns the most recent backfill progress snapshot. When no backfill has
+  // run in this process lifetime the response is { status: "idle" }. While a
+  // backfill is running (running: true) the response is updated after each
+  // page, so operators can poll this endpoint to monitor progress without
+  // tailing logs.
+  app.get(
+    "/backfill/status",
+    asyncHandler(async (_req, res) => {
+      const status = ingester.getBackfillStatus();
+      if (!status) {
+        res.json({ status: "idle" });
+        return;
+      }
+      res.json({ status: status.running ? "running" : "complete", progress: status });
+    }),
+  );
+
   // ── 404 ──────────────────────────────────────────────────────────────────
   app.use((_req, res) => {
     res.status(404).json({ error: "not found" });

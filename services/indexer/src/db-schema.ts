@@ -92,10 +92,44 @@ export function buildSchema(dialect: SqlDialect): Schema {
   const seedCursor = `INSERT ${dialect.insertIgnorePrefix}INTO ledger_cursor (id, last_ledger)
   VALUES (1, 0)${dialect.conflictDoNothing}`;
 
+  const backfillCursor = `CREATE TABLE IF NOT EXISTS backfill_cursor (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  ${column("last_ledger", int, { notNull: true, default: "0" })}
+)`;
+
+  const seedBackfillCursor = `INSERT ${dialect.insertIgnorePrefix}INTO backfill_cursor (id, last_ledger)
+  VALUES (1, 0)${dialect.conflictDoNothing}`;
+
+  // Range metadata lives in a new table so existing deployments using the
+  // original backfill_cursor schema do not require an ALTER TABLE migration.
+  const backfillCheckpoint = `CREATE TABLE IF NOT EXISTS backfill_checkpoint (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  ${column("start_ledger", int, { notNull: true, default: "0" })},
+  ${column("last_ledger", int, { notNull: true, default: "0" })}
+)`;
+
+  const seedBackfillCheckpoint = `INSERT ${dialect.insertIgnorePrefix}INTO backfill_checkpoint (id, start_ledger, last_ledger)
+  VALUES (1, 0, 0)${dialect.conflictDoNothing}`;
+
+  // A page may end in the middle of a ledger. Persist the opaque Horizon
+  // cursor separately so resuming cannot skip the remainder of that ledger.
+  const backfillPageCursor = `CREATE TABLE IF NOT EXISTS backfill_page_cursor (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  ${column("cursor", "TEXT")}
+)`;
+  const seedBackfillPageCursor = `INSERT ${dialect.insertIgnorePrefix}INTO backfill_page_cursor (id, cursor)
+  VALUES (1, NULL)${dialect.conflictDoNothing}`;
+
   const tables = [
     claims,
     ledgerCursor,
     seedCursor,
+    backfillCursor,
+    seedBackfillCursor,
+    backfillCheckpoint,
+    seedBackfillCheckpoint,
+    backfillPageCursor,
+    seedBackfillPageCursor,
     appSubmissions,
     `CREATE INDEX IF NOT EXISTS idx_app_submissions_status
   ON app_submissions (status)`,
