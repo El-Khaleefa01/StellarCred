@@ -53,6 +53,8 @@ import {
   RpcError,
 } from "./claims";
 
+import { IndexerError } from "./indexer";
+
 import {
   createWalletChallenge,
   verifyWalletSignature,
