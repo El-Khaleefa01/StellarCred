@@ -4,12 +4,13 @@
   "private": true,
   "main": "dist/index.js",
   "scripts": {
-     "check-env": "node scripts/check-env-sync.mjs",
-     "check": "npm run check-env && npm run lint && npm run test",
+    "check-env": "node scripts/check-env-sync.mjs",
+    "check": "npm run check-env && npm run lint && npm run test",
     "start": "node dist/index.js",
     "dev": "npm run build && npm start",
     "build": "tsc",
-    "test": "jest"
+    "test": "jest",
+    "backfill": "npm run build && node dist/backfill.js"
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^12.3.0",
