@@ -131,7 +131,74 @@ export async function fetchWalletClaims(
     );
   }
 
-  return claims;
+  return claims.map((value, index) => parseClaimRow(value, index));
+}
+
+function numberField(
+  raw: Record<string, unknown>,
+  key: keyof IndexerClaimRow,
+  index: number,
+): number {
+  const value = raw[key];
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new IndexerError(
+      `Indexer claim at position ${index} has a non-numeric \`${String(key)}\``,
+    );
+  }
+  return value;
+}
+
+function stringField(
+  raw: Record<string, unknown>,
+  key: keyof IndexerClaimRow,
+  index: number,
+): string {
+  const value = raw[key];
+  if (typeof value !== "string") {
+    throw new IndexerError(
+      `Indexer claim at position ${index} has a non-string \`${String(key)}\``,
+    );
+  }
+  return value;
+}
+
+/**
+ * Validates one wire row against {@link IndexerClaimRow}.
+ *
+ * `serializeClaim` in `services/indexer/src/api.ts` coerces every numeric
+ * column with `Number(…)`, so a healthy indexer always emits finite numbers.
+ * Anything else — a missing field, a stringified number from a driver that
+ * skipped that coercion, a `NaN` from a `NULL` column — means the row cannot be
+ * trusted: `evaluateClaimRow` would compare against `undefined`, and
+ * `readIsVerifiedFromIndexer` would hand callers `undefined` where its return
+ * type promises a `number`.
+ *
+ * Throws without a `status`, unlike the transport errors above: the indexer
+ * answered `200 OK`, so attaching that status would misdescribe the failure.
+ */
+export function parseClaimRow(
+  value: unknown,
+  index = 0,
+): IndexerClaimRow {
+  if (typeof value !== "object" || value === null) {
+    throw new IndexerError(
+      `Indexer claim at position ${index} was not an object`,
+    );
+  }
+
+  const raw = value as Record<string, unknown>;
+  return {
+    id: numberField(raw, "id", index),
+    wallet: stringField(raw, "wallet", index),
+    credential_type: stringField(raw, "credential_type", index),
+    issuer: stringField(raw, "issuer", index),
+    verified_at: numberField(raw, "verified_at", index),
+    expiry: numberField(raw, "expiry", index),
+    ledger_sequence: numberField(raw, "ledger_sequence", index),
+    threshold:
+      raw.threshold === null ? null : numberField(raw, "threshold", index),
+    revoked: numberField(raw, "revoked", index),
+  };
 }
 
 /**

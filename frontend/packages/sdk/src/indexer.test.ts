@@ -39,7 +39,12 @@ import {
   IndexerError,
   CLAIM_TYPES,
 } from "./claims";
-import { evaluateClaimRow, issuerIsTrusted, type IndexerClaimRow } from "./indexer";
+import {
+  evaluateClaimRow,
+  issuerIsTrusted,
+  parseClaimRow,
+  type IndexerClaimRow,
+} from "./indexer";
 
 const WALLET = "GABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const ISSUER = "GISSUERISSUERISSUERISSUERISSUERIS";
@@ -67,11 +72,14 @@ type RecordedRequest = { url: string; headers: Record<string, string> };
 /**
  * Installs a fetch mock that serves `claims` for any wallet.
  *
+ * `claims` is `unknown[]` rather than `IndexerClaimRow[]` so the validation
+ * tests can serve deliberately malformed rows.
+ *
  * The impl declares fetch's real parameter list and records requests itself
  * rather than relying on `mock.calls` tuple inference, which resolves to `[]`
  * when the mock is parameterless.
  */
-function mockIndexer(claims: IndexerClaimRow[], status = 200) {
+function mockIndexer(claims: readonly unknown[], status = 200) {
   const requests: RecordedRequest[] = [];
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     requests.push({
@@ -184,6 +192,60 @@ describe("issuerIsTrusted (contract parity)", () => {
 
   it("rejects everything when the filter is an empty list", () => {
     expect(issuerIsTrusted(ISSUER, [])).toBe(false);
+  });
+});
+
+describe("parseClaimRow (wire validation)", () => {
+  it("returns a well-formed row unchanged", () => {
+    const input = row();
+    expect(parseClaimRow(input)).toEqual(input);
+  });
+
+  it("accepts a numeric threshold and a null threshold", () => {
+    expect(parseClaimRow(row({ threshold: 18 })).threshold).toBe(18);
+    expect(parseClaimRow(row({ threshold: null })).threshold).toBeNull();
+  });
+
+  it("rejects a row that is not an object", () => {
+    expect(() => parseClaimRow(null, 2)).toThrow(IndexerError);
+    expect(() => parseClaimRow("kyc", 2)).toThrow(/position 2/);
+  });
+
+  it("rejects a missing field", () => {
+    const incomplete: Record<string, unknown> = { ...row() };
+    delete incomplete.expiry;
+    expect(() => parseClaimRow(incomplete)).toThrow(/non-numeric `expiry`/);
+  });
+
+  // `serializeClaim` coerces with `Number(…)`; a driver that skipped it would
+  // send strings, which must not be silently compared as if they were numbers.
+  it("rejects a stringified number", () => {
+    expect(() =>
+      parseClaimRow({ ...row(), verified_at: "1700000000" }),
+    ).toThrow(/non-numeric `verified_at`/);
+  });
+
+  it("rejects NaN and Infinity", () => {
+    expect(() => parseClaimRow({ ...row(), threshold: Number.NaN })).toThrow(
+      /threshold/,
+    );
+    expect(() =>
+      parseClaimRow({ ...row(), expiry: Number.POSITIVE_INFINITY }),
+    ).toThrow(/expiry/);
+  });
+
+  it("rejects a non-string credential_type", () => {
+    expect(() => parseClaimRow({ ...row(), credential_type: 7 })).toThrow(
+      /non-string `credential_type`/,
+    );
+  });
+
+  it("drops fields the SDK does not model", () => {
+    const parsed = parseClaimRow({
+      ...row(),
+      internal_note: "should not leak",
+    });
+    expect(Object.keys(parsed)).not.toContain("internal_note");
   });
 });
 
@@ -496,6 +558,39 @@ describe("indexer misconfiguration and failure", () => {
         retryOptions: { retries: 0 },
       }),
     ).rejects.toBeInstanceOf(IndexerError);
+  });
+
+  it("throws IndexerError when an individual claim row is malformed", async () => {
+    mockIndexer([{ ...row(), verified_at: "1700000000" }]);
+
+    await expect(
+      hasClaim(WALLET, "kyc", {
+        source: "indexer",
+        throwOnError: true,
+        retryOptions: { retries: 0 },
+      }),
+    ).rejects.toThrow(/non-numeric `verified_at`/);
+  });
+
+  it("fails soft to false when an individual claim row is malformed", async () => {
+    mockIndexer([{ id: 1 }]);
+
+    await expect(
+      hasClaim(WALLET, "kyc", { source: "indexer", retryOptions: { retries: 0 } }),
+    ).resolves.toBe(false);
+  });
+
+  it("still returns the chain result when an indexer row is malformed", async () => {
+    mockIndexer([{ ...row(), ledger_sequence: "100" }]);
+    mockChainValid(true);
+
+    await expect(
+      hasClaim(WALLET, "kyc", {
+        source: "indexer-verified",
+        retryOptions: { retries: 0 },
+      }),
+    ).resolves.toBe(true);
+    expect(isVerified).toHaveBeenCalledTimes(1);
   });
 
   it("does not cache a failed response", async () => {
