@@ -47,6 +47,10 @@ import {
   removeCredential,
   markProved,
   markAllProved,
+  createSaveCredentialUpdater,
+  createRemoveCredentialUpdater,
+  createMarkProvedUpdater,
+  createMarkAllProvedUpdater,
   parseCredential,
   exportCredentials,
 } from "@/lib/credential";
@@ -467,11 +471,14 @@ function HolderInner() {
   } | null>(null);
 
   async function executeBulkRemove(commitments: string[]) {
+    // Update state immediately using functional update
+    setCreds((prev) => prev.filter((c) => !commitments.includes(c.commitment)));
+    
+    // Persist to localStorage in background
     for (const commitment of commitments) {
       await removeCredential(commitment);
     }
-    const updated = await loadCredentials();
-    setCreds(updated);
+    
     setSelectedCommitments([]);
     setConfirmBulkAction(null);
   }
@@ -539,14 +546,24 @@ function HolderInner() {
           cred={view.cred}
           holder={address}
           onBack={() => setView({ kind: "list" })}
-          onProved={(txHash) => markProved(view.cred.commitment, txHash).then(setCreds)}
+          onProved={async (txHash) => {
+            // Update state immediately with functional update to avoid stale data
+            setCreds(createMarkProvedUpdater(view.cred.commitment, txHash));
+            // Persist to localStorage in background
+            await markProved(view.cred.commitment, txHash);
+          }}
         />
       ) : view.kind === "batch" ? (
         <BatchProofFlow
           creds={view.creds}
           holder={address}
           onBack={() => setView({ kind: "list" })}
-          onProved={(txHash, commitments) => markAllProved(commitments, txHash).then(setCreds)}
+          onProved={async (txHash, commitments) => {
+            // Update state immediately with functional update to avoid stale data
+            setCreds(createMarkAllProvedUpdater(commitments, txHash));
+            // Persist to localStorage in background
+            await markAllProved(commitments, txHash);
+          }}
         />
       ) : (
         <div className="stack reveal" style={{ gap: "1.5rem" }}>
@@ -627,7 +644,10 @@ function HolderInner() {
                   c={c}
                   address={address}
                   onProve={() => setView({ kind: "single", cred: c })}
-                  onRemove={() => removeCredential(c.commitment).then(setCreds)}
+                  onRemove={async () => {
+                    setCreds(createRemoveCredentialUpdater(c.commitment));
+                    await removeCredential(c.commitment);
+                  }}
                   onInspect={() => setDetailCred(c)}
                   isPreview={isPreview}
                 />
@@ -661,7 +681,10 @@ function HolderInner() {
                   c={c}
                   address={address}
                   onProve={() => setView({ kind: "single", cred: c })}
-                  onRemove={() => removeCredential(c.commitment).then(setCreds)}
+                  onRemove={async () => {
+                    setCreds(createRemoveCredentialUpdater(c.commitment));
+                    await removeCredential(c.commitment);
+                  }}
                   onInspect={() => setDetailCred(c)}
                   isPreview={isPreview}
                 />
@@ -679,7 +702,10 @@ function HolderInner() {
                   c={c}
                   address={address}
                   onProve={() => setView({ kind: "single", cred: c })}
-                   onRemove={() => removeCredential(c.commitment).then(setCreds)}
+                   onRemove={async () => {
+                    setCreds(createRemoveCredentialUpdater(c.commitment));
+                    await removeCredential(c.commitment);
+                  }}
                    onInspect={() => setDetailCred(c)}
                    isPreview={isPreview}
                    selection={
@@ -773,7 +799,10 @@ function HolderInner() {
                   c={c}
                   address={address}
                   onProve={() => setView({ kind: "single", cred: c })}
-                  onRemove={() => removeCredential(c.commitment).then(setCreds)}
+                  onRemove={async () => {
+                    setCreds(createRemoveCredentialUpdater(c.commitment));
+                    await removeCredential(c.commitment);
+                  }}
                   onInspect={() => setDetailCred(c)}
                   isPreview={isPreview}
                 />
@@ -790,7 +819,10 @@ function HolderInner() {
           {importing ? (
             <ImportPanel
               onImport={async (c) => {
-                setCreds(await saveCredential(c));
+                // Update state immediately with functional update to avoid stale data
+                setCreds(createSaveCredentialUpdater(c));
+                // Persist to localStorage in background
+                await saveCredential(c);
                 setImporting(false);
               }}
               onCancel={() => setImporting(false)}
@@ -862,11 +894,11 @@ function HolderInner() {
       {importPayload && (
         <TransferImportModal
           payload={importPayload}
-          onImported={(c) =>
-
-      
- {
-            saveCredential(c).then(setCreds);
+          onImported={async (c) => {
+            // Update state immediately with functional update to avoid stale data
+            setCreds(createSaveCredentialUpdater(c));
+            // Persist to localStorage in background
+            await saveCredential(c);
             setImportPayload(null);
             toast.success(`Imported ${c.title}`);
           }}

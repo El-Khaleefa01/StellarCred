@@ -378,15 +378,44 @@ export async function saveCredential(cred: Credential): Promise<Credential[]> {
   return next;
 }
 
+/**
+ * Returns an updater function for saving a credential using React's functional setState.
+ * Prevents race conditions when credentials are saved while other operations are in progress.
+ */
+export function createSaveCredentialUpdater(cred: Credential) {
+  return (prevCreds: Credential[]): Credential[] => [
+    cred,
+    ...prevCreds.filter(
+      (c) => !(c.type === cred.type && c.commitment === cred.commitment),
+    ),
+  ];
+}
+
 export async function markProved(commitment: string, txHash: string): Promise<Credential[]> {
   const all = await loadCredentials();
+  const now = Math.floor(Date.now() / 1000);
   const next = all.map((c) =>
     c.commitment === commitment
-      ? { ...c, provedAt: Math.floor(Date.now() / 1000), provedTxHash: txHash }
+      ? { ...c, provedAt: now, provedTxHash: txHash }
       : c,
   );
   await persistCredentials(next);
   return next;
+}
+
+/**
+ * Returns an updater function for use with React's functional setState pattern.
+ * This ensures the update is applied to the latest state, avoiding race conditions
+ * when network responses return after cache updates.
+ */
+export function createMarkProvedUpdater(commitment: string, txHash: string) {
+  const now = Math.floor(Date.now() / 1000);
+  return (prevCreds: Credential[]): Credential[] =>
+    prevCreds.map((c) =>
+      c.commitment === commitment
+        ? { ...c, provedAt: now, provedTxHash: txHash }
+        : c,
+    );
 }
 
 /** Mark multiple credentials as proved in a single localStorage write. */
@@ -404,11 +433,33 @@ export async function markAllProved(
   return next;
 }
 
+/**
+ * Returns an updater function for batch proof updates using React's functional setState.
+ * Prevents stale data when multiple credentials are proved simultaneously.
+ */
+export function createMarkAllProvedUpdater(commitments: string[], txHash: string) {
+  const set = new Set(commitments);
+  const now = Math.floor(Date.now() / 1000);
+  return (prevCreds: Credential[]): Credential[] =>
+    prevCreds.map((c) =>
+      set.has(c.commitment) ? { ...c, provedAt: now, provedTxHash: txHash } : c,
+    );
+}
+
 export async function removeCredential(commitment: string): Promise<Credential[]> {
   const all = await loadCredentials();
   const next = all.filter((c) => c.commitment !== commitment);
   await persistCredentials(next);
   return next;
+}
+
+/**
+ * Returns an updater function for removing a credential using React's functional setState.
+ * Prevents race conditions when credentials are removed while other operations are in progress.
+ */
+export function createRemoveCredentialUpdater(commitment: string) {
+  return (prevCreds: Credential[]): Credential[] =>
+    prevCreds.filter((c) => c.commitment !== commitment);
 }
 
 /**
