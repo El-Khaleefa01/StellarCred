@@ -2,16 +2,18 @@
 
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { useWallet } from "@/lib/wallet-context";
-import { NETWORK } from "@/lib/stellar";
+import { useNetwork } from "@/lib/network-context";
 
 // Persistent warning shown whenever the connected wallet is on the wrong
 // network. Driven by a live poll in wallet-context.tsx, so it appears/clears
 // on its own as the user switches networks — no reconnect required.
 export function NetworkBanner() {
   const { address, networkMismatch } = useWallet();
+  const { network } = useNetwork();
+  
   if (!address || !networkMismatch) return null;
 
-  const want = NETWORK === "mainnet" ? "Mainnet" : NETWORK === "futurenet" ? "Futurenet" : "Testnet";
+  const want = network === "mainnet" ? "Mainnet" : network === "futurenet" ? "Futurenet" : "Testnet";
 
   return (
     <div

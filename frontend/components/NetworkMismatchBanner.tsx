@@ -1,7 +1,7 @@
 "use client";
 
 import { IconAlertTriangle } from "@tabler/icons-react";
-import { NETWORK } from "@/lib/stellar";
+import { useNetwork } from "@/lib/network-context";
 
 // Shown when the connected wallet's selected network doesn't match this app's
 // configured network (testnet vs mainnet passphrase mismatch). The kit's
@@ -10,6 +10,19 @@ import { NETWORK } from "@/lib/stellar";
 // user action, not something we can silently fix. `wallet-context.tsx` polls
 // live so this clears itself the moment the user switches (Issue #214).
 export function NetworkMismatchBanner() {
+<<<<<<< Updated upstream
+=======
+  const t = useTranslations();
+  const { network } = useNetwork();
+
+  const networkLabel =
+    network === "mainnet"
+      ? t("network.mainnet")
+      : network === "futurenet"
+      ? t("network.futurenet")
+      : t("network.testnet");
+
+>>>>>>> Stashed changes
   return (
     <div
       className="row"

@@ -91,7 +91,19 @@
   "network": {
     "wrongNetwork": "Red incorrecta detectada. Cambia tu cartera a {network} para continuar.",
     "testnet": "Testnet",
+<<<<<<< Updated upstream
     "mainnet": "Mainnet"
+=======
+    "mainnet": "Mainnet",
+    "futurenet": "Futurenet",
+    "selectNetwork": "Seleccionar red",
+    "unavailable": "Red no disponible",
+    "deprecated": "Red obsoleta",
+    "unavailableTitle": "Red No Disponible",
+    "unavailableMessage": "{network} no está disponible actualmente. Por favor, selecciona una red diferente o inténtalo más tarde.",
+    "deprecatedTitle": "Red Obsoleta",
+    "switchingWarning": "Cambiar de red requerirá reconectar tu cartera y puede afectar las transacciones pendientes."
+>>>>>>> Stashed changes
   },
   "config": {
     "notConfigured": "La aplicación no está completamente configurada.",

@@ -91,7 +91,19 @@
   "network": {
     "wrongNetwork": "Wrong network detected. Switch your wallet to {network} to continue.",
     "testnet": "Testnet",
+<<<<<<< Updated upstream
     "mainnet": "Mainnet"
+=======
+    "mainnet": "Mainnet",
+    "futurenet": "Futurenet",
+    "selectNetwork": "Select network",
+    "unavailable": "Network unavailable",
+    "deprecated": "Network deprecated",
+    "unavailableTitle": "Network Unavailable",
+    "unavailableMessage": "{network} is currently unavailable. Please select a different network or try again later.",
+    "deprecatedTitle": "Network Deprecated",
+    "switchingWarning": "Switching networks will require reconnecting your wallet and may affect pending transactions."
+>>>>>>> Stashed changes
   },
   "config": {
     "notConfigured": "App not fully configured.",

@@ -45,8 +45,13 @@ export function parseNetwork(raw: string | undefined): StellarNetwork | null {
   return null;
 }
 
+// Default network from env (can be overridden by NetworkContext at runtime)
 const rawNetwork = process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? "testnet";
-export const NETWORK: StellarNetwork = parseNetwork(rawNetwork) ?? "testnet";
+export const DEFAULT_NETWORK: StellarNetwork = parseNetwork(rawNetwork) ?? "testnet";
+
+// For SSR and initial render, use the default network
+// Client-side code should prefer useNetwork() from network-context.tsx
+export const NETWORK: StellarNetwork = DEFAULT_NETWORK;
 
 const preset = NETWORK_PRESETS[NETWORK];
 
@@ -54,6 +59,19 @@ export const RPC_URL =
   process.env.NEXT_PUBLIC_RPC_URL ?? preset.rpcUrl;
 export const NETWORK_PASSPHRASE =
   process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? preset.networkPassphrase;
+
+/**
+ * Get the network configuration for a specific network.
+ * Use this when you need to access network config dynamically.
+ */
+export function getNetworkConfig(network: StellarNetwork) {
+  const preset = NETWORK_PRESETS[network];
+  return {
+    rpcUrl: process.env.NEXT_PUBLIC_RPC_URL ?? preset.rpcUrl,
+    networkPassphrase: process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? preset.networkPassphrase,
+    explorerNetwork: preset.explorerNetwork,
+  };
+}
 
 export const CONTRACTS = {
   issuerRegistry: process.env.NEXT_PUBLIC_ISSUER_REGISTRY_ID ?? "",

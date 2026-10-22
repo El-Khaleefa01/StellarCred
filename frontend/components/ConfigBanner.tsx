@@ -8,7 +8,7 @@ import {
   missingIssueConfigEnvVars,
 } from "@/lib/config";
 import { checkNetworkConfig } from "@/lib/network-check";
-import { NETWORK } from "@/lib/stellar";
+import { useNetwork } from "@/lib/network-context";
 
 /**
  * Shown up front on any page with actions that depend on deploy config.
@@ -20,6 +20,11 @@ import { NETWORK } from "@/lib/stellar";
  * IssuerRegistry, not just the contract IDs.
  */
 export function ConfigBanner({ requireIssuance = false }: { requireIssuance?: boolean }) {
+<<<<<<< Updated upstream
+=======
+  const t = useTranslations();
+  const { network } = useNetwork();
+>>>>>>> Stashed changes
   const missing = missingContractEnvVars();
   const missingIssue = requireIssuance ? missingIssueConfigEnvVars() : [];
   const allMissing = Array.from(new Set([...missing, ...missingIssue]));
@@ -74,10 +79,16 @@ export function ConfigBanner({ requireIssuance = false }: { requireIssuance?: bo
 
       <IconInfoCircle size={16} className="config-banner__icon" />
       <span className="config-banner__text">
+<<<<<<< Updated upstream
         <strong className="config-banner__strong">App not fully configured.</strong>{" "}
         Active network: <strong>{NETWORK}</strong>.{" "}
         {requireIssuance ? "Credential issuance and " : ""}On-chain submission is
         disabled — missing env vars:{" "}
+=======
+        <strong className="config-banner__strong">{t("config.notConfigured")}</strong>{" "}
+        {t("config.activeNetwork")}: <strong>{network}</strong>.{" "}
+        {requireIssuance ? t("config.credentialIssuanceAnd") : ""}{t("config.onChainSubmissionDisabled")}{" "}
+>>>>>>> Stashed changes
         <span className="config-banner__code">{allMissing.join(", ")}</span>. Run{" "}
         <span className="config-banner__code">./scripts/deploy.sh</span> and set them in{" "}
         <span className="config-banner__code">frontend/.env.local</span>.

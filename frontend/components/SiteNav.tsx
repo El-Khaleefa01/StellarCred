@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { IconBook2, IconCode, IconMenu2, IconX, IconHelp } from "@tabler/icons-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { NetworkSelector } from "./NetworkSelector";
 import { resetOnboarding } from "@/lib/onboarding";
 
 const LINKS = [
@@ -87,6 +88,7 @@ export function SiteNav() {
         </nav>
 
         <div id="mobile-nav-right" className="nav-right">
+          <NetworkSelector />
           <button
             type="button"
             className="seg-link nav-reset-btn"

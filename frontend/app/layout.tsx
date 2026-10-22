@@ -9,6 +9,7 @@ import { RpcStatusBanner } from "@/components/RpcStatusBanner";
 import { Footer } from "@/components/Footer";
 import { LocaleMetaTags } from "@/components/LocaleMetaTags";
 import { WalletProvider } from "@/lib/wallet-context";
+import { NetworkProvider } from "@/lib/network-context";
 import { ToastProvider } from "@/components/Toast";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
@@ -86,16 +87,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </a>
         <NextIntlClientProvider messages={messages} locale={locale}>
           <ToastProvider>
-            <WalletProvider>
-              <SiteNav />
-              <NetworkBanner />
-              <RpcStatusBanner />
-              <OnboardingWizard />
-              <main id="main-content" tabIndex={-1} className="container">
-                {children}
-              </main>
-              <Footer />
-            </WalletProvider>
+            <NetworkProvider>
+              <WalletProvider>
+                <SiteNav />
+                <NetworkBanner />
+                <RpcStatusBanner />
+                <OnboardingWizard />
+                <main id="main-content" tabIndex={-1} className="container">
+                  {children}
+                </main>
+                <Footer />
+              </WalletProvider>
+            </NetworkProvider>
           </ToastProvider>
         </NextIntlClientProvider>
       </body>
