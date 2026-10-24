@@ -29,12 +29,48 @@ export interface ClaimInput {
   threshold: number | null;
   /** 1 if the issuer has revoked this proof, 0 otherwise */
   revoked: number;
+  /** Revocation reason code: expired, superseded, fraud, user_request, other */
+  reason_code: string;
 }
 
 /** A claim row as read back from the database (includes the `id` cursor). */
 export interface ClaimRow extends ClaimInput {
   /** Auto-increment insertion cursor; the unique tiebreaker in /recent's keyset ordering. */
   id: number;
+}
+
+export type ClaimLifecycleEventType = "revoked" | "expired";
+
+export interface WebhookSubscriptionInput {
+  url: string;
+  wallet: string;
+  credential_type: string;
+}
+
+export interface WebhookSubscription extends WebhookSubscriptionInput {
+  id: number;
+  created_at: string;
+}
+
+export interface ClaimLifecycleEvent {
+  event_id: string;
+  type: ClaimLifecycleEventType;
+  wallet: string;
+  credential_type: string;
+  expiry: number;
+  ledger_sequence: number;
+  occurred_at: number;
+  reason_code: string;
+}
+
+export interface WebhookDelivery extends ClaimLifecycleEvent {
+  id: number;
+  subscription_id: number;
+  target_url: string;
+  attempts: number;
+  next_attempt_at: number;
+  delivered_at: number | null;
+  last_error: string | null;
 }
 
 // ── Adapter interface ──────────────────────────────────────────────────────
@@ -85,8 +121,30 @@ export interface Db {
   /** Mark a claim as revoked. */
   revokeClaim(
     wallet: string,
-    credentialType: string
+    credentialType: string,
+    reasonCode?: string
   ): void | Promise<void>;
+
+  /** Run a filtered, paginated claim query (used by the GraphQL endpoint). */
+  queryClaims(
+    filter: {
+      wallet?: string;
+      credentialType?: string;
+      issuer?: string;
+      active?: boolean;
+      revoked?: boolean;
+      verifiedAfter?: number;
+      verifiedBefore?: number;
+    },
+    limit: number,
+    after?: string
+  ): Promise<{
+    rows: ClaimRow[];
+    hasNextPage: boolean;
+    endCursor: string;
+  }>;
+  /** Read a specific claim before applying a revocation event. */
+  claimByWalletAndType(wallet: string, credentialType: string): ClaimRow | undefined | Promise<ClaimRow | undefined>;
 
   /** Return all claims for a wallet (active and revoked). */
   claimsByWallet(wallet: string): ClaimRow[] | Promise<ClaimRow[]>;
@@ -141,6 +199,36 @@ export interface Db {
 
   /** Update the status of an app submission. */
   updateSubmissionStatus(id: number, status: SubmissionStatus): void | Promise<void>;
+
+  /** Create a wallet/claim-specific lifecycle webhook subscription. */
+  createWebhookSubscription(input: WebhookSubscriptionInput): number | Promise<number>;
+  /** Return webhook subscriptions, optionally filtered by wallet. */
+  listWebhookSubscriptions(wallet?: string): WebhookSubscription[] | Promise<WebhookSubscription[]>;
+  /** Remove one subscription; already queued deliveries remain retryable. */
+  deleteWebhookSubscription(id: number): boolean | Promise<boolean>;
+  /** Queue a lifecycle event for every matching subscription, idempotently. */
+  enqueueWebhookEvent(event: ClaimLifecycleEvent): void | Promise<void>;
+  /** Return active claims whose expiry has passed. */
+  expiredActiveClaims(now: number): ClaimRow[] | Promise<ClaimRow[]>;
+  /**
+   * Return the next slice of claims for the on-chain state verification routine
+   * (#612), advancing an internal cursor past the returned rows.
+   *
+   * The cursor makes successive calls walk the whole table in `id` order and
+   * wrap around, so a periodic check spread over many runs covers every claim
+   * instead of re-verifying the same head rows on every run. Checks never
+   * overlap, so `last_claim_id` needs no optimistic locking.
+   */
+  sampleClaimsForVerification(limit: number): ClaimRow[] | Promise<ClaimRow[]>;
+  /** Return due, undelivered webhook attempts. */
+  pendingWebhookDeliveries(now: number, limit: number, maxAttempts: number): WebhookDelivery[] | Promise<WebhookDelivery[]>;
+  /** Persist one webhook attempt and its retry/delivery state. */
+  updateWebhookDelivery(
+    id: number,
+    update: { attempts: number; nextAttemptAt: number; deliveredAt: number | null; lastError: string | null },
+  ): void | Promise<void>;
+  /** Return a subscription's recent delivery history. */
+  webhookDeliveries(subscriptionId: number, limit: number): WebhookDelivery[] | Promise<WebhookDelivery[]>;
 
   /** Close the underlying connection / pool. */
   close(): void | Promise<void>;
@@ -298,10 +386,25 @@ export function toClaimRow(row: Record<string, unknown>): ClaimRow {
     ledger_sequence: Number(row["ledger_sequence"]),
     threshold: row["threshold"] == null ? null : Number(row["threshold"]),
     revoked: Number(row["revoked"]),
+    reason_code: (row["reason_code"] as string) || "other",
   };
 }
 
 /** Coerce a possibly-string aggregate (`COUNT(*)`, `MAX(...)`) to a number. */
 export function toCount(value: SqlParam | undefined): number {
   return value == null ? 0 : Number(value);
+}
+
+/** Metadata written by a future seeding PR (issue #907). */
+export interface IssuerMetadataInput {
+  address: string;
+  name: string | null;
+  url: string | null;
+  logo: string | null;
+  ledger_sequence: number;
+}
+
+/** An issuer_metadata row as read back from the database. */
+export interface IssuerMetadataRow extends IssuerMetadataInput {
+  updated_at: string;
 }

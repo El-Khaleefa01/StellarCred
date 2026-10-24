@@ -50,7 +50,7 @@ use soroban_sdk::{
 // Increment MAJOR on breaking changes (new entry points, changed ABI)
 // Increment MINOR on additive changes (new events, new query endpoints)
 // Increment PATCH on bug fixes with no ABI changes
-const CONTRACT_VERSION: u32 = 1_000_000; // 1.0.0 encoded as (major * 1000000) + (minor * 1000) + patch
+const CONTRACT_VERSION: u32 = 1_001_000; // 1.1.0 encoded as (major * 1000000) + (minor * 1000) + patch
 
 // ── Data schema versioning ──────────────────────────────────────────────────────
 // ProofRecord schema versions: used for forward-compatible migrations.
@@ -79,6 +79,17 @@ pub struct EventProofSubmitted {
     pub expiry: u64,
 }
 
+/// Reason codes for issuer-initiated proof revocations (#393).
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RevocationReason {
+    Expired = 0,
+    Superseded = 1,
+    Fraud = 2,
+    UserRequest = 3,
+    Other = 4,
+}
+
 /// Payload emitted when an issuer revokes a holder's proof.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -86,6 +97,16 @@ pub struct EventProofRevoked {
     pub holder: Address,
     pub issuer: Address,
     pub revoked_at: u64,
+    pub reason: RevocationReason,
+}
+
+/// Payload emitted when a holder revokes their own cached proof.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EventHolderRevoked {
+    pub holder: Address,
+    pub revoked_at: u64,
+    pub reason: RevocationReason,
 }
 
 /// Payload emitted when submissions are paused.
@@ -145,6 +166,16 @@ pub struct EventVerificationGranted {
 pub struct EventVerificationRevoked {
     pub holder: Address,
     pub verifier: Address,
+}
+
+/// Payload emitted when a nullifier is seen and recorded for an application context (#395).
+/// Topics: ("proof_reg", "nullifier")
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EventNullifierUsed {
+    pub app_context: BytesN<32>,
+    pub nullifier: BytesN<32>,
+    pub recorded_at: u64,
 }
 
 // Persistent-entry lifetime management
@@ -215,6 +246,7 @@ pub struct ProofRecord {
     pub revoked: bool,
     pub issuer: Option<Address>,
     pub vk_version: u32,
+    pub reason: RevocationReason,
 }
 
 #[contracttype]
@@ -258,6 +290,9 @@ pub enum DataKey {
     /// scoped, time-boxed grant letting `verifier` read `holder`'s
     /// `credential_type` result via `check_delegated_verification` (#396).
     Delegation(Address, Address, Symbol),
+    /// (app_context, nullifier) -> bool. Stores whether a nullifier has been
+    /// consumed within an application context to enforce Sybil resistance (#395).
+    Nullifier(BytesN<32>, BytesN<32>),
 }
 
 #[contracterror]
@@ -283,6 +318,8 @@ pub enum Error {
     RoleHolderMismatch = 14,
     /// `accept_admin` was called with no pending proposal (#343).
     NoPendingAdmin = 15,
+    /// The nullifier has already been consumed in this application context (#395).
+    NullifierAlreadyUsed = 16,
 }
 
 #[contract]
@@ -543,6 +580,7 @@ impl ProofRegistry {
             revoked: false,
             issuer: Some(issuer_id),
             vk_version: vk_version.unwrap_or(0),
+            reason: RevocationReason::Other,
         };
         env.storage().persistent().set(&key, &record);
         Self::bump_ttl(&env, &key, expiry);
@@ -559,6 +597,65 @@ impl ProofRegistry {
                 verified_at: record.verified_at,
                 expiry: record.expiry,
             },
+        );
+    }
+
+    /// Checks if a nullifier has already been recorded for a specific application context (#395).
+    pub fn is_nullifier_used(env: Env, app_context: BytesN<32>, nullifier: BytesN<32>) -> bool {
+        let key = DataKey::Nullifier(app_context, nullifier);
+        env.storage().persistent().has(&key)
+    }
+
+    /// Records a nullifier for a specific application context to enforce one-per-person / Sybil resistance.
+    /// Rejects a second submission/recording with the same nullifier for that context (#395).
+    #[allow(deprecated)]
+    pub fn record_nullifier(env: Env, app_context: BytesN<32>, nullifier: BytesN<32>) {
+        Self::ensure_not_paused(&env);
+        if Self::is_nullifier_used(env.clone(), app_context.clone(), nullifier.clone()) {
+            panic_with_error!(&env, Error::NullifierAlreadyUsed);
+        }
+        let key = DataKey::Nullifier(app_context.clone(), nullifier.clone());
+        env.storage().persistent().set(&key, &true);
+        env.storage().persistent().extend_ttl(&key, PROOF_BUMP_THRESHOLD, PROOF_TTL);
+
+        env.events().publish(
+            (
+                symbol_short!("proof_reg"),
+                symbol_short!("nullifier"),
+            ),
+            EventNullifierUsed {
+                app_context,
+                nullifier,
+                recorded_at: env.ledger().timestamp(),
+            },
+        );
+    }
+
+    /// Submits a proof and atomically binds and records a per-app nullifier (#395).
+    /// Rejects on-chain if the nullifier has already been used in this app_context.
+    #[allow(deprecated)]
+    pub fn submit_proof_with_nullifier(
+        env: Env,
+        holder: Address,
+        issuer_id: Address,
+        credential_type: Symbol,
+        proof: Bytes,
+        public_inputs: Bytes,
+        vk_version: Option<u32>,
+        expiry: u64,
+        app_context: BytesN<32>,
+        nullifier: BytesN<32>,
+    ) {
+        Self::record_nullifier(env.clone(), app_context, nullifier);
+        Self::submit_proof(
+            env,
+            holder,
+            issuer_id,
+            credential_type,
+            proof,
+            public_inputs,
+            vk_version,
+            expiry,
         );
     }
 
@@ -633,6 +730,7 @@ impl ProofRegistry {
                 revoked: false,
                 issuer: Some(sub.issuer_id.clone()),
                 vk_version: effective_version,
+                reason: RevocationReason::Other,
             };
             env.storage().persistent().set(&key, &record);
             Self::bump_ttl(&env, &key, sub.expiry);
@@ -924,13 +1022,28 @@ impl ProofRegistry {
     }
 
     /// Revoke a cached proof. The holder authorizes their own revocation.
+    #[allow(deprecated)]
     pub fn revoke_proof(env: Env, holder: Address, credential_type: Symbol) {
         holder.require_auth();
-        env.storage()
-            .persistent()
-            .remove(&DataKey::Proof(holder, credential_type));
+        let key = DataKey::Proof(holder.clone(), credential_type.clone());
+        if env.storage().persistent().has(&key) {
+            env.storage().persistent().remove(&key);
+            env.events().publish(
+                (
+                    symbol_short!("proof_reg"),
+                    symbol_short!("self_rev"),
+                    credential_type,
+                ),
+                EventHolderRevoked {
+                    holder,
+                    revoked_at: env.ledger().timestamp(),
+                    reason: RevocationReason::UserRequest,
+                },
+            );
+        }
     }
 
+    #[allow(deprecated)]
     pub fn revoke_all(env: Env, holder: Address) {
         holder.require_auth();
         let types = [
@@ -942,17 +1055,38 @@ impl ProofRegistry {
             Symbol::new(&env, "accreditation"),
             Symbol::new(&env, "employment"),
         ];
-        for t in types {
-            env.storage()
-                .persistent()
-                .remove(&DataKey::Proof(holder.clone(), t));
+        for credential_type in types {
+            let key = DataKey::Proof(holder.clone(), credential_type.clone());
+            if env.storage().persistent().has(&key) {
+                env.storage().persistent().remove(&key);
+                env.events().publish(
+                    (
+                        symbol_short!("proof_reg"),
+                        symbol_short!("self_rev"),
+                        credential_type,
+                    ),
+                    EventHolderRevoked {
+                        holder: holder.clone(),
+                        revoked_at: env.ledger().timestamp(),
+                        reason: RevocationReason::UserRequest,
+                    },
+                );
+            }
         }
     }
 
     /// Revoke an existing proof before expiry. The caller must be both a
     /// currently trusted issuer and the issuer stored on that proof record.
+    /// `reason` is an optional revocation reason code (#393); defaults to
+    /// `RevocationReason::Other` when not provided.
     #[allow(deprecated)]
-    pub fn revoke(env: Env, issuer: Address, holder: Address, credential_type: Symbol) {
+    pub fn revoke(
+        env: Env,
+        issuer: Address,
+        holder: Address,
+        credential_type: Symbol,
+        reason: Option<RevocationReason>,
+    ) {
         issuer.require_auth();
 
         let registry = IssuerClient::new(&env, &Self::issuer_registry(&env));
@@ -970,13 +1104,14 @@ impl ProofRegistry {
             panic_with_error!(&env, Error::NotAuthorized);
         }
         record.revoked = true;
+        record.reason = reason.unwrap_or(RevocationReason::Other);
         env.storage().persistent().set(&key, &record);
         env.storage()
             .persistent()
             .extend_ttl(&key, PROOF_BUMP_THRESHOLD, PROOF_TTL);
 
         // Emit: topics = ("proof_reg", "revoked", credential_type)
-        //       data   = EventProofRevoked { holder, issuer, revoked_at }
+        //       data   = EventProofRevoked { holder, issuer, revoked_at, reason }
         env.events().publish(
             (
                 symbol_short!("proof_reg"),
@@ -987,6 +1122,7 @@ impl ProofRegistry {
                 holder,
                 issuer,
                 revoked_at: env.ledger().timestamp(),
+                reason: record.reason,
             },
         );
     }
@@ -1024,6 +1160,7 @@ impl ProofRegistry {
                 revoked: legacy.revoked,
                 issuer: None,
                 vk_version: 0,
+                reason: RevocationReason::Other,
             };
             env.storage().persistent().set(&key, &record);
             Self::bump_ttl(&env, &key, record.expiry);
@@ -1158,6 +1295,7 @@ impl ProofRegistry {
             revoked: false,
             issuer: Some(issuer),
             vk_version: 0,
+            reason: RevocationReason::Other,
         };
         env.storage().persistent().set(&key, &record);
         Self::bump_ttl(env, &key, expiry);

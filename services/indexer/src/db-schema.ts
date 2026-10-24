@@ -14,6 +14,10 @@
  *                     verified event, updated on revoke.
  *   ledger_cursor   — single-row table; tracks the last fully processed ledger.
  *   app_submissions — third-party apps requesting credential access.
+ *   webhook_subscriptions — wallet/claim-specific protocol notifications.
+ *   webhook_deliveries — durable signed-event delivery and retry state.
+ *   data_integrity_state — singleton row holding the rotating sample cursor
+ *                     used by the on-chain state verification routine (#612).
  *
  * Only public chain data is stored — no identity fields.
  */
@@ -60,6 +64,7 @@ export function buildClaimsTable(dialect: SqlDialect): string {
   ${column("ledger_sequence", int, { notNull: true, default: "0" })},
   ${column("threshold", int)},
   ${column("revoked", dialect.flagType, { notNull: true, default: "0" })},
+  ${column("reason_code", "TEXT", { notNull: true, default: "'other'" })},
   ${dialect.claimsKeyClause}
 )`;
 }
@@ -88,61 +93,4 @@ export function buildSchema(dialect: SqlDialect): Schema {
   ${column("reviewed_at", dialect.timestampType)}
 )`;
 
-  // The cursor row is a singleton, so the seed must ignore an existing one.
-  const seedCursor = `INSERT ${dialect.insertIgnorePrefix}INTO ledger_cursor (id, last_ledger)
-  VALUES (1, 0)${dialect.conflictDoNothing}`;
-
-  const backfillCursor = `CREATE TABLE IF NOT EXISTS backfill_cursor (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
-  ${column("last_ledger", int, { notNull: true, default: "0" })}
-)`;
-
-  const seedBackfillCursor = `INSERT ${dialect.insertIgnorePrefix}INTO backfill_cursor (id, last_ledger)
-  VALUES (1, 0)${dialect.conflictDoNothing}`;
-
-  // Range metadata lives in a new table so existing deployments using the
-  // original backfill_cursor schema do not require an ALTER TABLE migration.
-  const backfillCheckpoint = `CREATE TABLE IF NOT EXISTS backfill_checkpoint (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
-  ${column("start_ledger", int, { notNull: true, default: "0" })},
-  ${column("last_ledger", int, { notNull: true, default: "0" })}
-)`;
-
-  const seedBackfillCheckpoint = `INSERT ${dialect.insertIgnorePrefix}INTO backfill_checkpoint (id, start_ledger, last_ledger)
-  VALUES (1, 0, 0)${dialect.conflictDoNothing}`;
-
-  // A page may end in the middle of a ledger. Persist the opaque Horizon
-  // cursor separately so resuming cannot skip the remainder of that ledger.
-  const backfillPageCursor = `CREATE TABLE IF NOT EXISTS backfill_page_cursor (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
-  ${column("cursor", "TEXT")}
-)`;
-  const seedBackfillPageCursor = `INSERT ${dialect.insertIgnorePrefix}INTO backfill_page_cursor (id, cursor)
-  VALUES (1, NULL)${dialect.conflictDoNothing}`;
-
-  const tables = [
-    claims,
-    ledgerCursor,
-    seedCursor,
-    backfillCursor,
-    seedBackfillCursor,
-    backfillCheckpoint,
-    seedBackfillCheckpoint,
-    backfillPageCursor,
-    seedBackfillPageCursor,
-    appSubmissions,
-    `CREATE INDEX IF NOT EXISTS idx_app_submissions_status
-  ON app_submissions (status)`,
-  ].join(";\n\n");
-
-  const indexes = [
-    ...dialect.extraClaimIndexes,
-    `CREATE INDEX IF NOT EXISTS idx_claims_wallet ON claims (wallet)`,
-    `CREATE INDEX IF NOT EXISTS idx_claims_type ON claims (credential_type)`,
-    `CREATE INDEX IF NOT EXISTS idx_claims_verified_at ON claims (verified_at DESC)`,
-    `CREATE INDEX IF NOT EXISTS idx_claims_recent
-  ON claims (ledger_sequence DESC, id DESC) WHERE revoked = 0`,
-  ].join(";\n\n");
-
-  return { claimsTable: claims, tables, indexes };
-}
+  const webhookSubscriptions = `CREATE TABLE IF NOT EXISTS webhook_subscriptions (

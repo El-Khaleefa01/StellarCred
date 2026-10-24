@@ -22,6 +22,7 @@ import {
   toCount,
   toRecentPage,
   type AppSubmission,
+  type ClaimLifecycleEvent,
   type ClaimInput,
   type ClaimRow,
   type CredentialEvent,
@@ -34,16 +35,53 @@ import {
   type TopVerifier,
   type VerificationRawEvent,
   type VerificationTimeBucket,
+  type WebhookDelivery,
+  type WebhookSubscriptionInput,
 } from "./db-types";
 
 /** A `claims` row as it comes back from the driver, before normalisation. */
 type RawRow = Record<string, unknown>;
+
+function encodeCursor(ledgerSequence: number, id: number): string {
+  return Buffer.from(`${ledgerSequence}:${id}`, "utf8").toString("base64url");
+}
+
+function decodeCursor(cursor: string): { ledgerSequence: number; id: number } | null {
+  try {
+    const decoded = Buffer.from(cursor, "base64url").toString("utf8");
+    const [ledgerSequence, id] = decoded.split(":").map(Number);
+    if (Number.isNaN(ledgerSequence) || Number.isNaN(id)) return null;
+    return { ledgerSequence, id };
+  } catch {
+    return null;
+  }
+}
 
 interface RawIssuerAgg {
   total: SqlParam;
   active: SqlParam;
   revoked: SqlParam;
   first_seen: SqlParam;
+}
+
+function toWebhookDelivery(row: Record<string, unknown>): WebhookDelivery {
+  return {
+    id: Number(row["id"]),
+    subscription_id: Number(row["subscription_id"]),
+    event_id: String(row["event_id"]),
+    type: row["event_type"] as WebhookDelivery["type"],
+    wallet: String(row["wallet"]),
+    credential_type: String(row["credential_type"]),
+    expiry: Number(row["expiry"]),
+    ledger_sequence: Number(row["ledger_sequence"]),
+    occurred_at: Number(row["occurred_at"]),
+    reason_code: String(row["reason_code"]),
+    target_url: String(row["target_url"]),
+    attempts: Number(row["attempts"]),
+    next_attempt_at: Number(row["next_attempt_at"]),
+    delivered_at: row["delivered_at"] == null ? null : Number(row["delivered_at"]),
+    last_error: row["last_error"] == null ? null : String(row["last_error"]),
+  };
 }
 
 export function createSharedDb(dialect: SqlDialect): Db {
@@ -136,15 +174,16 @@ export function createSharedDb(dialect: SqlDialect): Db {
       await dialect.run(
         `INSERT INTO claims
            (wallet, credential_type, issuer, verified_at, expiry,
-            ledger_sequence, threshold, revoked)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ledger_sequence, threshold, revoked, reason_code)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(wallet, credential_type) DO UPDATE SET
            issuer          = ${ex}.issuer,
            verified_at     = ${ex}.verified_at,
            expiry          = ${ex}.expiry,
            ledger_sequence = ${ex}.ledger_sequence,
            threshold       = ${ex}.threshold,
-           revoked         = 0`,
+           revoked         = ${ex}.revoked,
+           reason_code     = ${ex}.reason_code`,
         [
           row.wallet,
           row.credential_type,
@@ -153,17 +192,84 @@ export function createSharedDb(dialect: SqlDialect): Db {
           row.expiry,
           row.ledger_sequence,
           row.threshold ?? null,
-          0,
+          row.revoked ?? 0,
+          row.reason_code ?? "other",
         ],
       );
     },
 
-    async revokeClaim(wallet, credentialType) {
+    async revokeClaim(wallet, credentialType, reasonCode?: string) {
       await dialect.run(
-        `UPDATE claims SET revoked = 1
+        `UPDATE claims SET revoked = 1, reason_code = ?
          WHERE wallet = ? AND credential_type = ?`,
+        [reasonCode || "other", wallet, credentialType],
+      );
+    },
+
+    async queryClaims(filter, limit, after) {
+      const params: (string | number)[] = [];
+      const conditions: string[] = [];
+
+      if (filter.wallet) {
+        conditions.push("wallet = ?");
+        params.push(filter.wallet);
+      }
+      if (filter.credentialType) {
+        conditions.push("credential_type = ?");
+        params.push(filter.credentialType);
+      }
+      if (filter.issuer) {
+        conditions.push("issuer = ?");
+        params.push(filter.issuer);
+      }
+      if (filter.active === true) {
+        conditions.push("revoked = 0");
+      }
+      if (filter.revoked === true) {
+        conditions.push("revoked = 1");
+      }
+      if (filter.verifiedAfter !== undefined) {
+        conditions.push("verified_at >= ?");
+        params.push(filter.verifiedAfter);
+      }
+      if (filter.verifiedBefore !== undefined) {
+        conditions.push("verified_at < ?");
+        params.push(filter.verifiedBefore);
+      }
+
+      let cursorCondition = "";
+      if (after) {
+        const cursor = decodeCursor(after);
+        if (cursor) {
+          cursorCondition = conditions.length > 0
+            ? ` AND (ledger_sequence < ? OR (ledger_sequence = ? AND id < ?))`
+            : `WHERE (ledger_sequence < ? OR (ledger_sequence = ? AND id < ?))`;
+          params.push(cursor.ledgerSequence, cursor.ledgerSequence, cursor.id);
+        }
+      }
+
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+      const sql = `SELECT * FROM claims ${whereClause}${cursorCondition} ORDER BY ledger_sequence DESC, id DESC LIMIT ?`;
+      params.push(limit + 1);
+
+      const rows = await dialect.all<Record<string, unknown>>(sql, params);
+      const hasNextPage = rows.length > limit;
+      const pageRows = hasNextPage ? rows.slice(0, limit) : rows;
+
+      const lastRow = pageRows[pageRows.length - 1];
+      const endCursor = lastRow
+        ? encodeCursor(Number(lastRow["ledger_sequence"]), Number(lastRow["id"]))
+        : "";
+
+      return { rows: pageRows as unknown as ClaimRow[], hasNextPage, endCursor };
+    },
+
+    async claimByWalletAndType(wallet, credentialType) {
+      const rows = await claims(
+        "SELECT * FROM claims WHERE wallet = ? AND credential_type = ? LIMIT 1",
         [wallet, credentialType],
       );
+      return rows[0];
     },
 
     async claimsByWallet(wallet) {
@@ -372,6 +478,154 @@ export function createSharedDb(dialect: SqlDialect): Db {
          WHERE id = ?`,
         [status, id],
       );
+    },
+
+    async createWebhookSubscription(input: WebhookSubscriptionInput) {
+      await dialect.run(
+        `INSERT INTO webhook_subscriptions (url, wallet, credential_type)
+         VALUES (?, ?, ?)
+         ON CONFLICT (url, wallet, credential_type) DO NOTHING`,
+        [input.url, input.wallet, input.credential_type],
+      );
+      const row = await dialect.get<{ id: SqlParam }>(
+        `SELECT id FROM webhook_subscriptions
+         WHERE url = ? AND wallet = ? AND credential_type = ?`,
+        [input.url, input.wallet, input.credential_type],
+      );
+      if (!row) throw new Error("Webhook subscription insert did not persist");
+      return toCount(row.id);
+    },
+
+    async listWebhookSubscriptions(wallet) {
+      const rows = wallet
+        ? await dialect.all<Record<string, unknown>>(
+            `SELECT * FROM webhook_subscriptions WHERE wallet = ? ORDER BY id`,
+            [wallet],
+          )
+        : await dialect.all<Record<string, unknown>>(
+            `SELECT * FROM webhook_subscriptions ORDER BY id`,
+          );
+      return rows.map((row) => ({
+        id: Number(row["id"]),
+        url: String(row["url"]),
+        wallet: String(row["wallet"]),
+        credential_type: String(row["credential_type"]),
+        created_at: String(row["created_at"]),
+      }));
+    },
+
+    async deleteWebhookSubscription(id) {
+      const existing = await dialect.get<{ id: SqlParam }>(
+        "SELECT id FROM webhook_subscriptions WHERE id = ?",
+        [id],
+      );
+      if (!existing) return false;
+      await dialect.run("DELETE FROM webhook_subscriptions WHERE id = ?", [id]);
+      return true;
+    },
+
+    async enqueueWebhookEvent(event: ClaimLifecycleEvent) {
+      await dialect.run(
+        `INSERT INTO webhook_deliveries
+           (subscription_id, event_id, event_type, wallet, credential_type,
+            expiry, ledger_sequence, occurred_at, reason_code, target_url)
+         SELECT id, ?, ?, ?, ?, ?, ?, ?, ?, url
+         FROM webhook_subscriptions
+         WHERE wallet = ? AND credential_type = ?
+         ON CONFLICT (subscription_id, event_id) DO NOTHING`,
+        [
+          event.event_id,
+          event.type,
+          event.wallet,
+          event.credential_type,
+          event.expiry,
+          event.ledger_sequence,
+          event.occurred_at,
+          event.reason_code,
+          event.wallet,
+          event.credential_type,
+        ],
+      );
+    },
+
+    async expiredActiveClaims(now) {
+      return claims(
+        `SELECT DISTINCT claims.* FROM claims
+         INNER JOIN webhook_subscriptions
+           ON webhook_subscriptions.wallet = claims.wallet
+          AND webhook_subscriptions.credential_type = claims.credential_type
+         WHERE claims.revoked = 0 AND claims.expiry > 0 AND claims.expiry <= ?
+         ORDER BY claims.expiry, claims.id`,
+        [now],
+      );
+    },
+
+    async sampleClaimsForVerification(limit) {
+      const cursor = await dialect.get<{ last_claim_id: SqlParam }>(
+        "SELECT last_claim_id FROM data_integrity_state WHERE id = 1",
+      );
+      const lastId = toCount(cursor?.last_claim_id);
+
+      // Take the next `limit` rows past the cursor. When that runs off the end
+      // of the table, top the slice back up from the start so every check
+      // samples the same number of claims — otherwise the run just before the
+      // wrap would report a tiny `checked` count and look like the sweep had
+      // stalled.
+      let rows = await claims(
+        `SELECT * FROM claims WHERE id > ? ORDER BY id ASC LIMIT ?`,
+        [lastId, limit],
+      );
+      if (rows.length < limit && lastId > 0) {
+        const wrapped = await claims(
+          `SELECT * FROM claims WHERE id <= ? ORDER BY id ASC LIMIT ?`,
+          [lastId, limit - rows.length],
+        );
+        rows = rows.concat(wrapped);
+      }
+
+      const nextId = rows.length > 0 ? rows[rows.length - 1].id : lastId;
+      await dialect.run(
+        "UPDATE data_integrity_state SET last_claim_id = ? WHERE id = 1",
+        [nextId],
+      );
+      return rows;
+    },
+
+    async pendingWebhookDeliveries(now, limit, maxAttempts) {
+      const rows = await dialect.all<Record<string, unknown>>(
+        `SELECT * FROM webhook_deliveries
+         WHERE delivered_at IS NULL AND next_attempt_at <= ? AND attempts < ?
+         ORDER BY id
+         LIMIT ?`,
+        [now, maxAttempts, limit],
+      );
+      return rows.map(toWebhookDelivery);
+    },
+
+    async updateWebhookDelivery(id, update) {
+      await dialect.run(
+        `UPDATE webhook_deliveries
+         SET attempts = ?, next_attempt_at = ?, delivered_at = ?, last_error = ?
+         WHERE id = ?`,
+        [
+          update.attempts,
+          update.nextAttemptAt,
+          update.deliveredAt,
+          update.lastError,
+          id,
+        ],
+      );
+    },
+
+    async webhookDeliveries(subscriptionId, limit) {
+      const rows = await dialect.all<Record<string, unknown>>(
+        `SELECT * FROM webhook_deliveries
+         WHERE subscription_id = ?
+         ORDER BY id DESC
+         LIMIT ?`,
+        [subscriptionId, limit],
+      );
+      return rows.map(toWebhookDelivery);
     },
 
     async close() {

@@ -1,9 +1,14 @@
 // @stellarcred/sdk
 //
 // A tiny, zero-dependency* read-only client for protocols integrating
-// StellarCred. The only thing a protocol trusts is the on-chain
+// StellarCred. By default the only thing a protocol trusts is the on-chain
 // ProofRegistry — there is no API key, no backend, and no personal data
 // handling. `hasClaim` is the primary integration call.
+//
+// Reads can optionally be sourced from a StellarCred indexer instead
+// (`{ source: "indexer" }`), which is much faster but trusts whoever operates
+// that indexer. It is off by default and must never be the sole basis for a
+// security decision. See the SDK README §Indexer fast path (issue #613).
 //
 // *Requires @stellar/stellar-sdk as a peer dependency.
 //
@@ -23,11 +28,17 @@
 //   const ok = await StellarCred.hasClaim(walletAddress, "kyc");
 
 export * from "./claims";
+export * from "./capabilities";
 export * from "./challenge";
+export * from "./subscriptions";
+export * from "./errors"; // Typed error taxonomy (#404)
+export * from "./validateCredential"; // Credential JSON validation (#27)
+export { submitTransaction } from "./submit"; // Transaction submission with retry (#744)
+export type { SubmitTransactionOptions } from "./submit";
 export { createClaimGate } from "./core";
 export type { ClaimGateConfig, ClaimGateState, ClaimGateListener, ClaimGate } from "./core";
 export { useStellarCred } from "./react";
-export type { UseStellarCredOptions, UseStellarCredResult } from "./react";
+export type { UseStellarCredResult } from "./react";
 
 import {
   configure,
@@ -35,6 +46,8 @@ import {
   isConfigured,
   hasClaim,
   getClaim,
+  getClaimRecord,
+  checkClaimStatus,
   hasClaims,
   getClaims,
   verifyPreset,
@@ -44,12 +57,33 @@ import {
   parseReturnParams,
   watchClaim,
   withRetry,
+  normalizeRpcError,
+  classifyTransientFailure,
   CLAIM_TYPES,
+  deriveNullifier,
+  isNullifierUsed,
+  verifyUniquePersonhood,
   TimeoutError,
   ConfigError,
   InvalidAddressError,
-  RpcError,
 } from "./claims";
+
+import {
+  RpcError,
+  IndexerError,
+  ContractError,
+  ContractErrorCode,
+  parseContractError,
+  TransactionSubmissionError,
+} from "./errors";
+
+import { submitTransaction } from "./submit";
+
+import {
+  bootstrap,
+  fetchCapabilities,
+  validateCapabilitiesDescriptor,
+} from "./capabilities";
 
 import {
   createWalletChallenge,
@@ -57,12 +91,26 @@ import {
   verifyWalletClaim,
 } from "./challenge";
 
+import { subscribeClaims } from "./subscriptions";
+
+import {
+  validateCredential,
+  parseCredentialJson,
+  assertValidCredential,
+  CredentialValidationError,
+} from "./validateCredential";
+
 export const StellarCred = {
   configure,
+  bootstrap,
+  fetchCapabilities,
+  validateCapabilitiesDescriptor,
   healthCheck,
   isConfigured,
   hasClaim,
   getClaim,
+  getClaimRecord,
+  checkClaimStatus,
   hasClaims,
   getClaims,
   verifyPreset,
@@ -72,13 +120,29 @@ export const StellarCred = {
   parseReturnParams,
   watchClaim,
   withRetry,
+  normalizeRpcError,
+  classifyTransientFailure,
+  submitTransaction,
+  validateCredential,
+  parseCredentialJson,
+  assertValidCredential,
+  subscribeClaims,
   createWalletChallenge,
   verifyWalletSignature,
   verifyWalletClaim,
   CLAIM_TYPES,
+  deriveNullifier,
+  isNullifierUsed,
+  verifyUniquePersonhood,
   TimeoutError,
   ConfigError,
   InvalidAddressError,
   RpcError,
+  IndexerError,
+  ContractError,
+  ContractErrorCode,
+  TransactionSubmissionError,
+  CredentialValidationError,
+  parseContractError,
 };
 export default StellarCred;
