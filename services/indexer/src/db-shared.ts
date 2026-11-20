@@ -96,12 +96,17 @@ export function createSharedDb(dialect: SqlDialect): Db {
     return rows.map(toClaimRow);
   };
 
-  const claimsByIssuerRows = (issuer: string): Promise<ClaimRow[]> =>
+  const claimsByIssuerRows = (issuer: string, limit?: number): Promise<ClaimRow[]> =>
     claims(
-      `SELECT * FROM claims
+      limit === undefined
+        ? `SELECT * FROM claims
        WHERE issuer = ?
-       ORDER BY id DESC`,
-      [issuer],
+       ORDER BY id DESC`
+        : `SELECT * FROM claims
+       WHERE issuer = ?
+       ORDER BY id DESC
+       LIMIT ?`,
+      limit === undefined ? [issuer] : [issuer, limit],
     );
 
   return {
@@ -124,6 +129,48 @@ export function createSharedDb(dialect: SqlDialect): Db {
       await dialect.run(
         "UPDATE ledger_cursor SET last_ledger = ? WHERE id = 1",
         [seq],
+      );
+    },
+
+    async getBackfillLedger() {
+      const row = await dialect.get<{ last_ledger: SqlParam }>(
+        "SELECT last_ledger FROM backfill_cursor WHERE id = 1",
+      );
+      return toCount(row?.last_ledger);
+    },
+
+    async getBackfillStartLedger() {
+      const row = await dialect.get<{ start_ledger: SqlParam }>(
+        "SELECT start_ledger FROM backfill_checkpoint WHERE id = 1",
+      );
+      return toCount(row?.start_ledger);
+    },
+
+    async setBackfillStartLedger(seq) {
+      await dialect.run(
+        "UPDATE backfill_checkpoint SET start_ledger = ? WHERE id = 1",
+        [seq],
+      );
+    },
+
+    async setBackfillLedger(seq) {
+      await dialect.run(
+        "UPDATE backfill_cursor SET last_ledger = ? WHERE id = 1",
+        [seq],
+      );
+    },
+
+    async getBackfillCursor() {
+      const row = await dialect.get<{ cursor: string | null }>(
+        "SELECT cursor FROM backfill_page_cursor WHERE id = 1",
+      );
+      return row?.cursor ?? null;
+    },
+
+    async setBackfillCursor(cursor) {
+      await dialect.run(
+        "UPDATE backfill_page_cursor SET cursor = ? WHERE id = 1",
+        [cursor],
       );
     },
 
@@ -274,8 +321,8 @@ export function createSharedDb(dialect: SqlDialect): Db {
       };
     },
 
-    async claimsByIssuer(issuer) {
-      return claimsByIssuerRows(issuer);
+    async claimsByIssuer(issuer, limit) {
+      return claimsByIssuerRows(issuer, limit);
     },
 
     async credentialEvents(

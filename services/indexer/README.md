@@ -421,6 +421,40 @@ Three consequences pin down what the indexer may claim:
 
 ---
 
+## Historical Backfill
+
+Use the dedicated backfill command when bringing up a new indexer against an
+already-active contract or repairing a historical gap. Backfill is deliberately
+separate from the live poll loop: it does not apply `FINALITY_LAG`, does not
+start `POLL_INTERVAL_SECONDS`, and does not modify the live ingestion cursor.
+
+### Run a bounded backfill
+
+```bash
+cd services/indexer
+npm run backfill -- --from 100000 --to 120000
+```
+
+To run from the beginning of the ledger history through the current Horizon head:
+
+```bash
+npm run backfill -- --from genesis --to head
+```
+
+The command fetches up to 200 events per Horizon page, checkpoints each
+completed page in the separate `backfill_cursor`, and prints ledger, percentage,
+page, and event progress. Re-running the same command resumes from that
+checkpoint. Replaying a completed page is safe because claim writes are
+idempotent.
+
+Runtime depends on ledger span, event density, Horizon latency/rate limits, and
+database write speed. Use the progress output from a representative range to
+estimate production runtime; there is no fixed ledgers-per-second guarantee.
+
+Do not run the live poller and a backfill against the same database
+simultaneously. The backfill is a one-shot maintenance process and never starts
+the live polling loop or changes its finality behavior.
+
 ## Development & Testing
 
 ```bash
@@ -430,6 +464,9 @@ npm install
 # Run unit and integration tests (SQLite by default; add TEST_POSTGRES_URL
 # to also exercise the Postgres backend — see "Database Backend Selection")
 npm test
+
+# Run only the new parsing-and-persistence test suite (#820)
+npm test -- --testPathPattern=tests/indexer
 
 # Build TypeScript to dist/
 npm run build
@@ -441,6 +478,25 @@ npm run lint
 npm start
 ```
 
+### Test suites
+
+| Suite | File | What it covers |
+|-------|------|----------------|
+| Ingester (finality/reorg) | `src/ingester.test.ts` | Finality lag, reorg rollback, reconcile |
+| API endpoints | `src/api.test.ts` | HTTP contract for every endpoint |
+| Database adapter | `src/db.test.ts` | SQLite + Postgres schema and query correctness |
+| **Parsing & persistence** | `tests/indexer.test.ts` | Event XDR parsing, upsertClaim idempotency, revocation, cursor durability |
+
+The `tests/indexer.test.ts` suite (added for [#820](https://github.com/ToluLabs/StellarCred/issues/820))
+covers the critical parsing-and-persistence paths:
+
+- `upsertClaim` writes new claims and updates on conflict
+- `revokeClaim` marks only the targeted wallet+type, leaving others untouched
+- `getLastLedger` / `setLastLedger` persist and round-trip the scan cursor
+- `ingester.tick()` parses real XDR-encoded Horizon events via mocked fetch and persists them
+
+Fixtures live in `fixtures/indexer/` and are auto-generated on first run. Delete
+them and re-run the tests to regenerate from the current XDR encoding logic.
 `npm run lint` runs ESLint 9 over `src/` using [eslint.config.mjs](eslint.config.mjs),
 which replaces the legacy `.eslintrc.json` that sat here unread: ESLint was never
 added to this service's dependencies, so the config never ran. It is still not in

@@ -81,6 +81,30 @@ export function buildSchema(dialect: SqlDialect): Schema {
   ${column("last_ledger", int, { notNull: true, default: "0" })}
 )`;
 
+  const backfillCursor = `CREATE TABLE IF NOT EXISTS backfill_cursor (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  ${column("last_ledger", int, { notNull: true, default: "0" })}
+)`;
+
+  const backfillCheckpoint = `CREATE TABLE IF NOT EXISTS backfill_checkpoint (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  ${column("start_ledger", int, { notNull: true, default: "0" })}
+)`;
+
+  const backfillPageCursor = `CREATE TABLE IF NOT EXISTS backfill_page_cursor (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  ${column("cursor", "TEXT")}
+)`;
+
+  const seedBackfillCursor = `INSERT ${dialect.insertIgnorePrefix}INTO backfill_cursor (id, last_ledger)
+  VALUES (1, 0)${dialect.conflictDoNothing}`;
+
+  const seedBackfillCheckpoint = `INSERT ${dialect.insertIgnorePrefix}INTO backfill_checkpoint (id, start_ledger)
+  VALUES (1, 0)${dialect.conflictDoNothing}`;
+
+  const seedBackfillPageCursor = `INSERT ${dialect.insertIgnorePrefix}INTO backfill_page_cursor (id, cursor)
+  VALUES (1, NULL)${dialect.conflictDoNothing}`;
+
   const appSubmissions = `CREATE TABLE IF NOT EXISTS app_submissions (
   ${column("id", dialect.submissionIdType)},
   ${column("app_name", "TEXT", { notNull: true })},
@@ -140,6 +164,12 @@ export function buildSchema(dialect: SqlDialect): Schema {
     claims,
     ledgerCursor,
     seedCursor,
+    backfillCursor,
+    seedBackfillCursor,
+    backfillCheckpoint,
+    seedBackfillCheckpoint,
+    backfillPageCursor,
+    seedBackfillPageCursor,
     dataIntegrityState,
     seedDataIntegrityState,
     appSubmissions,
@@ -157,6 +187,7 @@ export function buildSchema(dialect: SqlDialect): Schema {
     ...dialect.extraClaimIndexes,
     `CREATE INDEX IF NOT EXISTS idx_claims_wallet ON claims (wallet)`,
     `CREATE INDEX IF NOT EXISTS idx_claims_type ON claims (credential_type)`,
+    `CREATE INDEX IF NOT EXISTS idx_claims_issuer ON claims (issuer)`,
     `CREATE INDEX IF NOT EXISTS idx_claims_verified_at ON claims (verified_at DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_claims_recent
   ON claims (ledger_sequence DESC, id DESC) WHERE revoked = 0`,
