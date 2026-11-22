@@ -115,7 +115,7 @@ describe("useOnboarding — core navigation", () => {
   });
 
   it("nextStep advances and marks completed at the end", () => {
-    ls.setItem("stellarcred:onboarding", JSON.stringify({ step: 4, dismissed: false, completed: false }));
+    ls.setItem("stellarcred:onboarding", JSON.stringify({ step: 5, dismissed: false, completed: false }));
     const { result } = renderHook(() => useOnboarding());
 
     act(() => result.current.nextStep());
