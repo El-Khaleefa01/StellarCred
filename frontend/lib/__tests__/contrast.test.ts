@@ -18,7 +18,7 @@ import { describe, it, expect } from "vitest";
 function getLuminance(r: number, g: number, b: number): number {
   const [rs, gs, bs] = [r, g, b].map((c) => {
     const val = c / 255;
-    return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+    return val <= 0.04045 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
   });
   return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
 }
@@ -44,15 +44,6 @@ function hexToRgb(hex: string): [number, number, number] {
   return [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)];
 }
 
-/**
- * Parse rgba string to RGB tuple (ignoring alpha)
- */
-function rgbaToRgb(rgba: string): [number, number, number] {
-  const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  if (!match) throw new Error(`Invalid rgba color: ${rgba}`);
-  return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])];
-}
-
 describe("Dark Mode Contrast Ratios (WCAG AA Compliance)", () => {
   // Dark mode background colors
   const backgrounds = {
@@ -76,7 +67,7 @@ describe("Dark Mode Contrast Ratios (WCAG AA Compliance)", () => {
   const proposedColors = {
     text: hexToRgb("#f5f5fa"), // Brighter white for better contrast
     muted: hexToRgb("#a8a8b8"), // Lighter muted text
-    faint: hexToRgb("#6e6e80"), // Lighter faint text
+    faint: hexToRgb("#7d7d8f"), // Lighter faint text
     accent: hexToRgb("#4aeaa4"), // Brighter accent green
     accentDim: hexToRgb("#3ecf8e"), // For large text / less critical uses
     warn: hexToRgb("#fac558"), // Brighter warning yellow
@@ -93,7 +84,7 @@ describe("Dark Mode Contrast Ratios (WCAG AA Compliance)", () => {
     it("should test current --muted color contrast", () => {
       const ratio = getContrastRatio(currentColors.muted, backgrounds.bg);
       console.log(`Current --muted (#888899) on --bg: ${ratio.toFixed(2)}:1`);
-      expect(ratio).toBeLessThan(4.5); // Expected to fail
+      expect(ratio).toBeGreaterThanOrEqual(4.5); // Existing muted token already passes AA.
     });
 
     it("should test current --faint color contrast", () => {
@@ -130,11 +121,11 @@ describe("Dark Mode Contrast Ratios (WCAG AA Compliance)", () => {
       });
     });
 
-    it("should meet 3:1 for --faint on all backgrounds (decorative text)", () => {
+    it("should meet 4.5:1 for --faint on all backgrounds", () => {
       Object.entries(backgrounds).forEach(([name, bg]) => {
         const ratio = getContrastRatio(proposedColors.faint, bg);
         console.log(`Proposed --faint on ${name}: ${ratio.toFixed(2)}:1`);
-        expect(ratio).toBeGreaterThanOrEqual(3.0); // Relaxed for decorative text
+        expect(ratio).toBeGreaterThanOrEqual(4.5);
       });
     });
 
@@ -183,12 +174,16 @@ describe("Dark Mode Contrast Ratios (WCAG AA Compliance)", () => {
 
   describe("Border Contrast (UI Component Boundaries)", () => {
     it("should ensure borders are visible against backgrounds", () => {
-      // Borders use rgba values, testing with approximation
-      const borderStrong = rgbaToRgb("rgba(255, 255, 255, 0.13)");
-      const ratio = getContrastRatio(borderStrong, backgrounds.bg);
-      console.log(`Border-strong visibility: ${ratio.toFixed(2)}:1`);
-      // Borders need at least 3:1 for non-text UI components per WCAG
-      expect(ratio).toBeGreaterThanOrEqual(1.5); // Relaxed for borders
+      // Composite the translucent border over each dark surface before measuring.
+      Object.entries(backgrounds).forEach(([name, background]) => {
+        const alpha = 0.35;
+        const border = [255, 255, 255].map((channel, index) =>
+          Math.round(channel * alpha + background[index] * (1 - alpha)),
+        ) as [number, number, number];
+        const ratio = getContrastRatio(border, background);
+        console.log(`Border-strong on ${name}: ${ratio.toFixed(2)}:1`);
+        expect(ratio).toBeGreaterThanOrEqual(3);
+      });
     });
   });
 
@@ -208,7 +203,9 @@ describe("Dark Mode Contrast Ratios (WCAG AA Compliance)", () => {
       console.log(`Submission pending color: ${pendingRatio.toFixed(2)}:1`);
       console.log(`Submission failed color: ${failedRatio.toFixed(2)}:1`);
 
-      // Note: These will likely fail and need updating in the component
+      expect(confirmedRatio).toBeGreaterThanOrEqual(4.5);
+      expect(pendingRatio).toBeGreaterThanOrEqual(4.5);
+      expect(failedRatio).toBeGreaterThanOrEqual(4.5);
     });
   });
 });
