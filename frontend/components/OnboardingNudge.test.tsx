@@ -4,23 +4,22 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { OnboardingNudge } from "./OnboardingNudge";
-import { ONBOARDING_STEPS } from "@/lib/onboarding";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
-let mockOnboardingState = {
+const { mockOnboardingState, mockWallet } = vi.hoisted(() => ({
+  mockOnboardingState: {
   state: { step: 4, dismissed: false, completed: false },
   currentStep: "generate-proof" as string,
   mounted: true,
   resumeAt: vi.fn(),
-};
-vi.mock("@/lib/onboarding", async (orig) => ({
-  ...(await orig()),
-  useOnboarding: () => mockOnboardingState,
-  ONBOARDING_STEPS,
+  },
+  mockWallet: { address: "GTEST" as string | null },
 }));
-
-let mockWallet = { address: "GTEST" as string | null };
+vi.mock("@/lib/onboarding", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/onboarding")>();
+  return { ...actual, useOnboarding: () => mockOnboardingState };
+});
 vi.mock("@/lib/wallet-context", () => ({
   useWallet: () => mockWallet,
 }));
@@ -57,7 +56,7 @@ afterEach(() => {
     mounted: true,
     resumeAt: vi.fn(),
   };
-  mockWallet = { address: "GTEST" };
+  mockWallet.address = "GTEST";
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
