@@ -22,7 +22,6 @@ let ls: ReturnType<typeof mockStorage>;
 
 beforeEach(() => {
   ls = mockStorage();
-  vi.stubGlobal("localStorage", ls);
   vi.spyOn(window, "addEventListener");
   vi.spyOn(window, "removeEventListener");
   vi.spyOn(window, "dispatchEvent");
@@ -30,7 +29,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
