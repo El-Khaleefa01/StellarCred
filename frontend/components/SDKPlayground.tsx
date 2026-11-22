@@ -26,7 +26,7 @@ function CodeBlock({ children }: { children: string }) {
 
 function ResultBox({ children, isError }: { children: React.ReactNode; isError?: boolean }) {
   return (
-    <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.8rem", background: isError ? "rgba(240, 96, 77, 0.08)" : "rgba(62, 207, 142, 0.06)", border: "1px solid " + (isError ? "rgba(240, 96, 77, 0.2)" : "rgba(62, 207, 142, 0.15)"), borderRadius: "var(--radius-sm)", padding: "0.75rem 1rem", lineHeight: 1.6, color: isError ? "var(--danger)" : "var(--text)" }}>
+    <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.8rem", background: isError ? "rgba(255, 115, 104, 0.08)" : "rgba(74, 234, 164, 0.06)", border: "1px solid " + (isError ? "rgba(255, 115, 104, 0.2)" : "rgba(74, 234, 164, 0.15)"), borderRadius: "var(--radius-sm)", padding: "0.75rem 1rem", lineHeight: 1.6, color: isError ? "var(--danger)" : "var(--text)" }}>
       {children}
     </div>
   );

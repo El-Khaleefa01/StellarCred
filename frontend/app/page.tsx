@@ -100,8 +100,8 @@ export default function Home() {
               fontSize: "0.6rem",
               gap: "0.45rem",
               padding: "0.35rem 0.75rem",
-              background: "rgba(62,207,142,0.07)",
-              border: "1px solid rgba(62,207,142,0.2)",
+              background: "rgba(74, 234, 164,0.07)",
+              border: "1px solid rgba(74, 234, 164,0.2)",
               borderRadius: "999px",
               color: "var(--accent)",
             }}
@@ -190,8 +190,8 @@ export default function Home() {
                   width: 38,
                   height: 38,
                   borderRadius: "var(--radius-sm)",
-                  background: "rgba(62,207,142,0.08)",
-                  border: "1px solid rgba(62,207,142,0.18)",
+                  background: "rgba(74, 234, 164,0.08)",
+                  border: "1px solid rgba(74, 234, 164,0.18)",
                   display: "grid",
                   placeItems: "center",
                   flexShrink: 0,
@@ -264,8 +264,8 @@ const canDeposit = await StellarCred.hasClaim(wallet, "kyc");`}</CodeBlock>
                 width: 38,
                 height: 38,
                 borderRadius: "var(--radius-sm)",
-                background: "rgba(62,207,142,0.08)",
-                border: "1px solid rgba(62,207,142,0.18)",
+                background: "rgba(74, 234, 164,0.08)",
+                border: "1px solid rgba(74, 234, 164,0.18)",
                 display: "grid",
                 placeItems: "center",
               }}
@@ -292,8 +292,8 @@ const canDeposit = await StellarCred.hasClaim(wallet, "kyc");`}</CodeBlock>
                 width: 38,
                 height: 38,
                 borderRadius: "var(--radius-sm)",
-                background: "rgba(62,207,142,0.08)",
-                border: "1px solid rgba(62,207,142,0.18)",
+                background: "rgba(74, 234, 164,0.08)",
+                border: "1px solid rgba(74, 234, 164,0.18)",
                 display: "grid",
                 placeItems: "center",
               }}
@@ -374,8 +374,8 @@ const canDeposit = await StellarCred.hasClaim(wallet, "kyc");`}</CodeBlock>
           style={{
             padding: "3rem",
             borderRadius: "var(--radius-xl)",
-            background: "linear-gradient(135deg, rgba(62,207,142,0.06) 0%, rgba(62,207,142,0.02) 100%)",
-            border: "1px solid rgba(62,207,142,0.15)",
+            background: "linear-gradient(135deg, rgba(74, 234, 164,0.06) 0%, rgba(74, 234, 164,0.02) 100%)",
+            border: "1px solid rgba(74, 234, 164,0.15)",
             textAlign: "center",
           }}
         >

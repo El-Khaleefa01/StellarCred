@@ -39,8 +39,8 @@ export function ConfigBanner({ requireIssuance = false }: { requireIssuance?: bo
           padding: "0.7rem 1rem",
           marginBottom: "1.5rem",
           borderRadius: "var(--radius)",
-          border: "1px solid rgba(240,96,77,0.4)",
-          background: "rgba(240,96,77,0.08)",
+          border: "1px solid rgba(255, 115, 104,0.4)",
+          background: "rgba(255, 115, 104,0.08)",
           fontSize: "0.8125rem",
           alignItems: "flex-start",
         }}

@@ -73,8 +73,8 @@ export function WalletOnboarding() {
         className="card"
         style={{
           padding: "1.25rem 1.5rem",
-          border: "1px solid rgba(234,179,8,0.3)",
-          backgroundColor: "rgba(234,179,8,0.06)",
+          border: "1px solid rgba(250, 197, 88,0.3)",
+          backgroundColor: "rgba(250, 197, 88,0.06)",
           marginBottom: "1.5rem",
         }}
       >

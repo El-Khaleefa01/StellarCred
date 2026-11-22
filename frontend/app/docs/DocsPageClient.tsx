@@ -79,7 +79,7 @@ function Callout({ variant = "info", children }: { variant?: "info" | "warn" | "
   const colors = {
     info: { border: "rgba(255,255,255,0.1)", bg: "rgba(255,255,255,0.03)", color: "var(--muted)" },
     warn: { border: "rgba(227,179,65,0.25)", bg: "rgba(227,179,65,0.06)", color: "var(--warn)" },
-    accent: { border: "rgba(62,207,142,0.25)", bg: "rgba(62,207,142,0.06)", color: "var(--accent)" },
+    accent: { border: "rgba(74, 234, 164,0.25)", bg: "rgba(74, 234, 164,0.06)", color: "var(--accent)" },
   }[variant];
   return (
     <div style={{ border: `1px solid ${colors.border}`, background: colors.bg, borderRadius: "var(--radius)", padding: "0.9rem 1.1rem", marginBottom: "1rem", fontSize: "0.875rem", color: colors.color, lineHeight: 1.65 }}>
@@ -107,7 +107,7 @@ function CodeBlock({ children }: { children: string }) {
 function ContractRow({ name, role }: { name: string; role: string }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: "0.9rem", padding: "0.8rem 0", borderBottom: "1px solid var(--border)" }}>
-      <code style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.78rem", color: "var(--accent)", background: "rgba(62,207,142,0.08)", border: "1px solid rgba(62,207,142,0.2)", borderRadius: "4px", padding: "0.15em 0.5em", whiteSpace: "nowrap", marginTop: "1px", flexShrink: 0 }}>
+      <code style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.78rem", color: "var(--accent)", background: "rgba(74, 234, 164,0.08)", border: "1px solid rgba(74, 234, 164,0.2)", borderRadius: "4px", padding: "0.15em 0.5em", whiteSpace: "nowrap", marginTop: "1px", flexShrink: 0 }}>
         {name}
       </code>
       <span style={{ color: "var(--muted)", fontSize: "0.875rem", lineHeight: 1.6 }}>{role}</span>
@@ -120,10 +120,10 @@ function CredRow({ type, title, claim, attribute, private: priv }: { type: strin
     <div className="card" style={{ padding: "1rem 1.25rem", marginBottom: "0.75rem" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.4rem", gap: "0.75rem", flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-          <code style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.72rem", color: "var(--accent)", background: "rgba(62,207,142,0.08)", border: "1px solid rgba(62,207,142,0.2)", borderRadius: "4px", padding: "0.1em 0.45em" }}>{type}</code>
+          <code style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.72rem", color: "var(--accent)", background: "rgba(74, 234, 164,0.08)", border: "1px solid rgba(74, 234, 164,0.2)", borderRadius: "4px", padding: "0.1em 0.45em" }}>{type}</code>
           <strong style={{ fontSize: "0.9rem" }}>{title}</strong>
         </div>
-        <span style={{ fontSize: "0.75rem", color: "var(--accent)", background: "rgba(62,207,142,0.08)", border: "1px solid rgba(62,207,142,0.18)", borderRadius: "999px", padding: "0.15rem 0.6rem" }}>{claim}</span>
+        <span style={{ fontSize: "0.75rem", color: "var(--accent)", background: "rgba(74, 234, 164,0.08)", border: "1px solid rgba(74, 234, 164,0.18)", borderRadius: "999px", padding: "0.15rem 0.6rem" }}>{claim}</span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginTop: "0.6rem" }}>
         <div>
@@ -292,8 +292,8 @@ export default function DocsPageClient() {
             display: "inline-flex",
             gap: "0.4rem",
             padding: "0.3rem 0.7rem",
-            background: "rgba(62,207,142,0.07)",
-            border: "1px solid rgba(62,207,142,0.2)",
+            background: "rgba(74, 234, 164,0.07)",
+            border: "1px solid rgba(74, 234, 164,0.2)",
             borderRadius: "999px",
             color: "var(--accent)",
             marginBottom: "1.25rem",
@@ -443,7 +443,7 @@ export default function DocsPageClient() {
                   paddingLeft: item.level === 3 ? "1.4rem" : "0.6rem",
                   borderRadius: "var(--radius-xs)",
                   color: active === item.id ? "var(--accent)" : "var(--muted)",
-                  background: active === item.id ? "rgba(62,207,142,0.08)" : "transparent",
+                  background: active === item.id ? "rgba(74, 234, 164,0.08)" : "transparent",
                   borderLeft: active === item.id
                     ? "2px solid var(--accent)"
                     : "2px solid transparent",
@@ -564,8 +564,8 @@ export default function DocsPageClient() {
                     width: 34,
                     height: 34,
                     borderRadius: "var(--radius-sm)",
-                    background: "rgba(62,207,142,0.07)",
-                    border: "1px solid rgba(62,207,142,0.18)",
+                    background: "rgba(74, 234, 164,0.07)",
+                    border: "1px solid rgba(74, 234, 164,0.18)",
                     display: "grid",
                     placeItems: "center",
                     flexShrink: 0,
@@ -1048,8 +1048,8 @@ fields 33–64  issuer_y   (secp256k1 Y, one byte per field in low byte)`}</Code
                       fontFamily: "var(--font-mono), monospace",
                       fontSize: "0.75rem",
                       color: "var(--accent)",
-                      background: "rgba(62,207,142,0.07)",
-                      border: "1px solid rgba(62,207,142,0.18)",
+                      background: "rgba(74, 234, 164,0.07)",
+                      border: "1px solid rgba(74, 234, 164,0.18)",
                       borderRadius: "4px",
                       padding: "0.1em 0.4em",
                       flexShrink: 0,

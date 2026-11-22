@@ -36,7 +36,7 @@ export function ProofStep({
             flexShrink: 0,
             border: `1px solid ${
               state === "done" ? "var(--accent)" :
-              state === "active" ? "rgba(62,207,142,0.5)" :
+              state === "active" ? "rgba(74, 234, 164,0.5)" :
               "var(--border-strong)"
             }`,
             background: state === "done" ? "var(--accent)" : "transparent",
@@ -85,8 +85,8 @@ export function ProofStep({
               style={{
                 fontSize: "0.68rem",
                 color: "var(--accent)",
-                background: "rgba(62,207,142,0.1)",
-                border: "1px solid rgba(62,207,142,0.2)",
+                background: "rgba(74, 234, 164,0.1)",
+                border: "1px solid rgba(74, 234, 164,0.2)",
                 borderRadius: "999px",
                 padding: "0.1rem 0.45rem",
                 fontWeight: 500,

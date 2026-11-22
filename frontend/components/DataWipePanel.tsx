@@ -142,9 +142,9 @@ export function DataWipePanel() {
           style={{
             padding: "0.875rem 1rem",
             backgroundColor: result.success
-              ? "rgba(62, 207, 142, 0.08)"
+              ? "rgba(74, 234, 164, 0.08)"
               : "rgba(239, 68, 68, 0.08)",
-            border: `1px solid ${result.success ? "rgba(62, 207, 142, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
+            border: `1px solid ${result.success ? "rgba(74, 234, 164, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
           }}
         >
           <div className="row" style={{ gap: "0.6rem", alignItems: "center" }}>

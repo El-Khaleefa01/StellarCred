@@ -191,8 +191,8 @@ export function ExportDataModal({
                 borderRadius: "8px",
                 display: "grid",
                 placeItems: "center",
-                backgroundColor: "rgba(62,207,142,0.12)",
-                color: "var(--accent, #3ecf8e)",
+                backgroundColor: "rgba(74, 234, 164,0.12)",
+                color: "var(--accent, #4aeaa4)",
               }}
             >
               <IconFileExport size={20} />
@@ -294,9 +294,9 @@ export function ExportDataModal({
             style={{
               padding: "0.75rem 1rem",
               borderRadius: "8px",
-              backgroundColor: "rgba(62, 207, 142, 0.1)",
-              border: "1px solid rgba(62, 207, 142, 0.3)",
-              color: "var(--accent, #3ecf8e)",
+              backgroundColor: "rgba(74, 234, 164, 0.1)",
+              border: "1px solid rgba(74, 234, 164, 0.3)",
+              color: "var(--accent, #4aeaa4)",
               fontSize: "0.825rem",
               marginBottom: "1rem",
               display: "flex",
@@ -349,10 +349,10 @@ export function ExportDataModal({
                         padding: "0.75rem 0.9rem",
                         borderRadius: "8px",
                         border: `1px solid ${
-                          isSelected ? "var(--accent, #3ecf8e)" : "var(--border)"
+                          isSelected ? "var(--accent, #4aeaa4)" : "var(--border)"
                         }`,
                         backgroundColor: isSelected
-                          ? "rgba(62, 207, 142, 0.06)"
+                          ? "rgba(74, 234, 164, 0.06)"
                           : isPermitted
                           ? "var(--card-subtle, rgba(255,255,255,0.02))"
                           : "rgba(0,0,0,0.2)",
@@ -390,8 +390,8 @@ export function ExportDataModal({
                                 fontSize: "0.675rem",
                                 padding: "0.1rem 0.4rem",
                                 borderRadius: "4px",
-                                backgroundColor: "rgba(234, 179, 8, 0.15)",
-                                color: "var(--warn, #eab308)",
+                                backgroundColor: "rgba(250, 197, 88, 0.15)",
+                                color: "var(--warn, #fac558)",
                                 display: "inline-flex",
                                 alignItems: "center",
                                 gap: "0.2rem",
@@ -450,11 +450,11 @@ export function ExportDataModal({
                     padding: "0.85rem",
                     borderRadius: "8px",
                     border: `1px solid ${
-                      selectedFormat === "json" ? "var(--accent, #3ecf8e)" : "var(--border)"
+                      selectedFormat === "json" ? "var(--accent, #4aeaa4)" : "var(--border)"
                     }`,
                     backgroundColor:
                       selectedFormat === "json"
-                        ? "rgba(62, 207, 142, 0.06)"
+                        ? "rgba(74, 234, 164, 0.06)"
                         : "var(--card-subtle, rgba(255,255,255,0.02))",
                     cursor: "pointer",
                     display: "flex",
@@ -462,7 +462,7 @@ export function ExportDataModal({
                     gap: "0.6rem",
                   }}
                 >
-                  <IconFileText size={20} style={{ color: "var(--accent, #3ecf8e)" }} />
+                  <IconFileText size={20} style={{ color: "var(--accent, #4aeaa4)" }} />
                   <div>
                     <div style={{ fontSize: "0.875rem", fontWeight: 600 }}>JSON</div>
                     <div style={{ fontSize: "0.725rem", color: "var(--faint, #888)" }}>
@@ -478,11 +478,11 @@ export function ExportDataModal({
                     padding: "0.85rem",
                     borderRadius: "8px",
                     border: `1px solid ${
-                      selectedFormat === "csv" ? "var(--accent, #3ecf8e)" : "var(--border)"
+                      selectedFormat === "csv" ? "var(--accent, #4aeaa4)" : "var(--border)"
                     }`,
                     backgroundColor:
                       selectedFormat === "csv"
-                        ? "rgba(62, 207, 142, 0.06)"
+                        ? "rgba(74, 234, 164, 0.06)"
                         : "var(--card-subtle, rgba(255,255,255,0.02))",
                     cursor: "pointer",
                     display: "flex",
@@ -490,7 +490,7 @@ export function ExportDataModal({
                     gap: "0.6rem",
                   }}
                 >
-                  <IconFileSpreadsheet size={20} style={{ color: "var(--accent, #3ecf8e)" }} />
+                  <IconFileSpreadsheet size={20} style={{ color: "var(--accent, #4aeaa4)" }} />
                   <div>
                     <div style={{ fontSize: "0.875rem", fontWeight: 600 }}>CSV</div>
                     <div style={{ fontSize: "0.725rem", color: "var(--faint, #888)" }}>
@@ -515,7 +515,7 @@ export function ExportDataModal({
                 lineHeight: 1.5,
               }}
             >
-              <IconShield size={16} style={{ color: "var(--accent, #3ecf8e)", flexShrink: 0 }} />
+              <IconShield size={16} style={{ color: "var(--accent, #4aeaa4)", flexShrink: 0 }} />
               <span>
                 Download links are cryptographically signed and expire after 5 minutes.
                 Exports contain sensitive cryptographic commitments; store backups securely.
@@ -661,8 +661,8 @@ export function ExportDataModal({
                                 fontSize: "0.75rem",
                                 padding: "0.2rem 0.5rem",
                                 borderRadius: "99px",
-                                backgroundColor: "rgba(234, 179, 8, 0.15)",
-                                color: "var(--warn, #eab308)",
+                                backgroundColor: "rgba(250, 197, 88, 0.15)",
+                                color: "var(--warn, #fac558)",
                                 display: "inline-flex",
                                 alignItems: "center",
                                 gap: "0.3rem",
@@ -695,8 +695,8 @@ export function ExportDataModal({
                                 fontSize: "0.75rem",
                                 padding: "0.2rem 0.5rem",
                                 borderRadius: "99px",
-                                backgroundColor: "rgba(62, 207, 142, 0.15)",
-                                color: "var(--accent, #3ecf8e)",
+                                backgroundColor: "rgba(74, 234, 164, 0.15)",
+                                color: "var(--accent, #4aeaa4)",
                                 display: "inline-flex",
                                 alignItems: "center",
                                 gap: "0.3rem",
@@ -755,7 +755,7 @@ export function ExportDataModal({
                             <span
                               style={{
                                 fontSize: "0.7rem",
-                                color: "var(--warn, #eab308)",
+                                color: "var(--warn, #fac558)",
                                 display: "inline-flex",
                                 alignItems: "center",
                                 gap: "0.25rem",

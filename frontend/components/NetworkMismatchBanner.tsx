@@ -30,8 +30,8 @@ export function NetworkMismatchBanner() {
         padding: "0.7rem 1rem",
         marginBottom: "1.25rem",
         borderRadius: "var(--radius)",
-        border: "1px solid rgba(240,96,77,0.3)",
-        background: "rgba(240,96,77,0.06)",
+        border: "1px solid rgba(255, 115, 104,0.3)",
+        background: "rgba(255, 115, 104,0.06)",
         fontSize: "0.8125rem",
       }}
     >

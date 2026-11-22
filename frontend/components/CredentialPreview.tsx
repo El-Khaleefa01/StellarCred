@@ -170,8 +170,8 @@ export function CredentialPreview({
           gap: "0.65rem",
           padding: "0.75rem 1rem",
           borderRadius: "var(--radius)",
-          background: "rgba(234,179,8,0.07)",
-          border: "1px solid rgba(234,179,8,0.3)",
+          background: "rgba(250, 197, 88,0.07)",
+          border: "1px solid rgba(250, 197, 88,0.3)",
           marginBottom: "1.5rem",
         }}
       >

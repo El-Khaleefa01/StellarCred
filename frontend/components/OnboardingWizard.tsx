@@ -59,7 +59,7 @@ const STEP_ICONS: Record<OnboardingStep, React.ReactNode> = {
 /* ── Shared presentation bits ────────────────────────────────────────────── */
 
 const SEVERITY_COLORS: Record<TrustSeverity, { fg: string; border: string; bg: string }> = {
-  success: { fg: ACCENT, border: "rgba(62, 207, 142, 0.25)", bg: "rgba(62, 207, 142, 0.07)" },
+  success: { fg: ACCENT, border: "rgba(74, 234, 164, 0.25)", bg: "rgba(74, 234, 164, 0.07)" },
   info: {
     fg: "var(--info, #6aa6ff)",
     border: "rgba(106, 166, 255, 0.3)",
@@ -186,8 +186,8 @@ function StepRail({ current, onJump }: { current: number; onJump: (index: number
                 placeItems: "center",
                 fontSize: "0.62rem",
                 fontWeight: 600,
-                background: active || done ? "rgba(62, 207, 142, 0.12)" : "transparent",
-                border: `1.5px solid ${active ? ACCENT : done ? "rgba(62, 207, 142, 0.5)" : "var(--border)"}`,
+                background: active || done ? "rgba(74, 234, 164, 0.12)" : "transparent",
+                border: `1.5px solid ${active ? ACCENT : done ? "rgba(74, 234, 164, 0.5)" : "var(--border)"}`,
                 transition: "all 0.25s var(--ease)",
               }}
             >
@@ -648,8 +648,8 @@ function UnlockStep({ trustStatus }: { trustStatus: IssuerStatus | null }) {
           width: 56,
           height: 56,
           borderRadius: "50%",
-          background: "rgba(62, 207, 142, 0.1)",
-          border: "1px solid rgba(62, 207, 142, 0.25)",
+          background: "rgba(74, 234, 164, 0.1)",
+          border: "1px solid rgba(74, 234, 164, 0.25)",
           display: "grid",
           placeItems: "center",
           margin: "0 auto 1.1rem",
@@ -835,8 +835,8 @@ export function OnboardingWizard() {
               width: 40,
               height: 40,
               borderRadius: "var(--radius-sm)",
-              background: "rgba(62, 207, 142, 0.08)",
-              border: "1px solid rgba(62, 207, 142, 0.18)",
+              background: "rgba(74, 234, 164, 0.08)",
+              border: "1px solid rgba(74, 234, 164, 0.18)",
               display: "grid",
               placeItems: "center",
               color: ACCENT,

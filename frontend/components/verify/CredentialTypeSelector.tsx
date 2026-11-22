@@ -122,8 +122,8 @@ export function CredentialTypeSelector({
               style={{
                 padding: "0.75rem 0.9rem",
                 borderRadius: "var(--radius)",
-                border: `1px solid ${on ? "rgba(62,207,142,0.4)" : "var(--border)"}`,
-                background: on ? "rgba(62,207,142,0.05)" : "transparent",
+                border: `1px solid ${on ? "rgba(74, 234, 164,0.4)" : "var(--border)"}`,
+                background: on ? "rgba(74, 234, 164,0.05)" : "transparent",
                 cursor: locked ? "default" : "pointer",
                 transition:
                   "border-color 0.2s var(--ease), background 0.2s var(--ease)",

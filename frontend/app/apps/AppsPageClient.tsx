@@ -113,11 +113,11 @@ function ProtocolCard({
                   textTransform: "uppercase",
                   letterSpacing: "0.04em",
                   background: isClaimMet
-                    ? "rgba(62,207,142,0.15)"
+                    ? "rgba(74, 234, 164,0.15)"
                     : "rgba(255,255,255,0.05)",
                   color: isClaimMet ? "var(--accent)" : "var(--faint)",
                   border: `1px solid ${
-                    isClaimMet ? "rgba(62,207,142,0.35)" : "var(--border)"
+                    isClaimMet ? "rgba(74, 234, 164,0.35)" : "var(--border)"
                   }`,
                   opacity: checking ? 0.55 : 1,
                 }}
@@ -357,8 +357,8 @@ function AppsInner() {
           marginBottom: "1.75rem",
           padding: "0.75rem 1rem",
           borderRadius: "var(--radius)",
-          background: "rgba(62,207,142,0.05)",
-          border: "1px solid rgba(62,207,142,0.15)",
+          background: "rgba(74, 234, 164,0.05)",
+          border: "1px solid rgba(74, 234, 164,0.15)",
           fontSize: "0.8125rem",
           color: "var(--muted)",
           lineHeight: 1.6,
@@ -379,8 +379,8 @@ function AppsInner() {
             marginBottom: "1.5rem",
             padding: "0.85rem 1rem",
             borderRadius: "var(--radius)",
-            background: "rgba(62,207,142,0.08)",
-            border: "1px solid rgba(62,207,142,0.35)",
+            background: "rgba(74, 234, 164,0.08)",
+            border: "1px solid rgba(74, 234, 164,0.35)",
             fontSize: "0.875rem",
             color: "var(--text)",
             display: "flex",
@@ -443,7 +443,7 @@ function AppsInner() {
                   fontSize: "0.72rem",
                   fontWeight: 500,
                   border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
-                  background: isActive ? "rgba(62,207,142,0.12)" : "transparent",
+                  background: isActive ? "rgba(74, 234, 164,0.12)" : "transparent",
                   color: isActive ? "var(--accent)" : "var(--muted)",
                   cursor: "pointer",
                   transition: "all 0.15s ease",

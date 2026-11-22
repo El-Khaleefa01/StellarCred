@@ -156,7 +156,7 @@ function Metric({ label, value, warn }: { label: string; value: string; warn?: b
         padding: "0.4rem 0.75rem",
         borderRadius: "var(--radius)",
         background: "rgba(255,255,255,0.03)",
-        border: `1px solid ${warn ? "rgba(240,96,77,0.4)" : "var(--border)"}`,
+        border: `1px solid ${warn ? "rgba(255, 115, 104,0.4)" : "var(--border)"}`,
       }}
     >
       <div className="faint" style={{ fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -181,7 +181,7 @@ function ProofRunRow({ run }: { run: ProofRun }) {
         padding: "0.6rem 0.75rem",
         borderRadius: "var(--radius)",
         border: `1px solid ${
-          failed ? "rgba(240,96,77,0.4)" : over ? "rgba(234,179,8,0.35)" : "var(--border)"
+          failed ? "rgba(255, 115, 104,0.4)" : over ? "rgba(250, 197, 88,0.35)" : "var(--border)"
         }`,
         background: over ? "rgba(255,255,255,0.02)" : "transparent",
       }}
@@ -194,8 +194,8 @@ function ProofRunRow({ run }: { run: ProofRun }) {
               style={{
                 fontSize: "0.62rem",
                 color: "var(--accent)",
-                background: "rgba(62,207,142,0.1)",
-                border: "1px solid rgba(62,207,142,0.25)",
+                background: "rgba(74, 234, 164,0.1)",
+                border: "1px solid rgba(74, 234, 164,0.25)",
                 borderRadius: 999,
                 padding: "0.05rem 0.4rem",
               }}

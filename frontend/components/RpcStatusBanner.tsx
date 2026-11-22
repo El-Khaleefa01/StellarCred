@@ -25,8 +25,8 @@ export function RpcStatusBanner() {
       style={{
         gap: "0.6rem",
         padding: "0.7rem 1.5rem",
-        borderBottom: "1px solid rgba(240, 96, 77, 0.35)",
-        background: "rgba(240, 96, 77, 0.08)",
+        borderBottom: "1px solid rgba(255, 115, 104, 0.35)",
+        background: "rgba(255, 115, 104, 0.08)",
         fontSize: "0.8125rem",
         justifyContent: "center",
         flexWrap: "wrap",
