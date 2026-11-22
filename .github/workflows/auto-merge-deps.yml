@@ -72,12 +72,22 @@ jobs:
             console.log(`Evaluating PR #${prNumber} for safe dependency auto-merge...`);
 
             // Fetch pull request details
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_request_number: prNumber,
-              pull_number: prNumber,
-            });
+            let pr;
+            try {
+              ({ data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+              }));
+            } catch (error) {
+              if (error.status === 404) {
+                const message = `PR #${prNumber} is not in ${context.repo.owner}/${context.repo.repo}; skipping this fork-side workflow_run.`;
+                console.log(message);
+                core.notice(message);
+                return;
+              }
+              throw error;
+            }
 
             if (pr.state !== 'open') {
               console.log(`PR #${prNumber} is not open (state: ${pr.state}). Skipping.`);
