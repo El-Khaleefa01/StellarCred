@@ -279,7 +279,7 @@ describe("DB persistence — revokeClaim", () => {
 
   beforeEach(async () => {
     cfg = makeConfig();
-    db = makeTmpDb(cfg);
+    db = await makeTmpDb(cfg);
   });
 
   afterEach(async () => {
@@ -352,7 +352,7 @@ describe("DB cursor durability", () => {
 
   beforeEach(async () => {
     cfg = makeConfig();
-    db = makeTmpDb(cfg);
+    db = await makeTmpDb(cfg);
   });
 
   afterEach(async () => {
@@ -387,7 +387,7 @@ describe("Ingester.tick() — event parsing and persistence", () => {
 
   beforeEach(async () => {
     cfg = makeConfig({ finalityLag: 0 });
-    db = makeTmpDb(cfg);
+    db = await makeTmpDb(cfg);
     fetchMock = jest.spyOn(global, "fetch");
   });
 
@@ -502,7 +502,7 @@ describe("DB stats", async () => {
 
   beforeEach(async () => {
     cfg = makeConfig();
-    db = makeTmpDb(cfg);
+    db = await makeTmpDb(cfg);
   });
 
   afterEach(async () => {
