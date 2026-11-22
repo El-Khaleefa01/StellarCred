@@ -496,7 +496,7 @@ describe("Ingester.tick() — event parsing and persistence", () => {
 // 5. Aggregate stats
 // ---------------------------------------------------------------------------
 
-describe("DB stats", async () => {
+describe("DB stats", () => {
   let db: Db;
   let cfg: Config;
 
