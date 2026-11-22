@@ -215,7 +215,7 @@ describe("DB persistence — upsertClaim", () => {
     };
     await db.upsertClaim(row);
     await db.upsertClaim(row); // duplicate — must not throw or double-insert
-    const claims = db.claimsByWallet("GHOLDER0002") as object[];
+    const claims = await db.claimsByWallet("GHOLDER0002") as object[];
     expect(claims.length).toBe(1);
   });
 
@@ -234,7 +234,7 @@ describe("DB persistence — upsertClaim", () => {
     await db.upsertClaim(row);
     // Re-ingest with updated expiry (e.g. re-proved with new TTL)
     await db.upsertClaim({ ...row, expiry: 1_900_000_000, ledger_sequence: 800 });
-    const claims = db.claimsByWallet("GHOLDER0003") as Array<{ expiry: number }>;
+    const claims = await db.claimsByWallet("GHOLDER0003") as Array<{ expiry: number }>;
     expect(claims.length).toBe(1);
     // Should have the latest expiry
     expect(claims[0].expiry).toBe(1_900_000_000);
@@ -264,8 +264,8 @@ describe("DB persistence — upsertClaim", () => {
       reason_code: "other",
     });
     expect((await db.claimsByWallet("GHOLDER_A") as object[]).length).toBe(1);
-    expect((db.claimsByWallet("GHOLDER_B") as object[]).length).toBe(1);
-    expect((db.claimsByWallet("GHOLDER_C") as object[]).length).toBe(0);
+    expect(((await db.claimsByWallet("GHOLDER_B") as object[]).length).toBe(1);
+    expect(((await db.claimsByWallet("GHOLDER_C") as object[]).length).toBe(0);
   });
 });
 
@@ -283,7 +283,7 @@ describe("DB persistence — revokeClaim", () => {
   });
 
   afterEach(() => {
-    db.close();
+    await db.close();
     try { fs.unlinkSync(cfg.sqlitePath); } catch { /* */ }
   });
 
@@ -300,7 +300,7 @@ describe("DB persistence — revokeClaim", () => {
       reason_code: "other",
     });
     await db.revokeClaim("GHOLDER_REV", "funds");
-    const claims = db.claimsByWallet("GHOLDER_REV") as Array<{ revoked: number }>;
+    const claims = await db.claimsByWallet("GHOLDER_REV") as Array<{ revoked: number }>;
     expect(claims.length).toBe(1);
     expect(claims[0].revoked).toBe(1);
   });
@@ -329,7 +329,7 @@ describe("DB persistence — revokeClaim", () => {
       reason_code: "other",
     });
     await db.revokeClaim("GHOLDER_MULTI", "kyc");
-    const claims = db.claimsByWallet("GHOLDER_MULTI") as Array<{ credential_type: string; revoked: number }>;
+    const claims = await db.claimsByWallet("GHOLDER_MULTI") as Array<{ credential_type: string; revoked: number }>;
     const kyc = claims.find((c) => c.credential_type === "kyc");
     const age = claims.find((c) => c.credential_type === "age");
     expect(kyc?.revoked).toBe(1);
@@ -356,7 +356,7 @@ describe("DB cursor durability", () => {
   });
 
   afterEach(() => {
-    db.close();
+    await db.close();
     try { fs.unlinkSync(cfg.sqlitePath); } catch { /* */ }
   });
 
@@ -366,13 +366,13 @@ describe("DB cursor durability", () => {
 
   it("persists the cursor and reads it back", async () => {
     await db.setLastLedger(1234);
-    expect(db.getLastLedger()).toBe(1234);
+    expect(await db.getLastLedger()).toBe(1234);
   });
 
   it("overwrites the cursor on repeated writes", async () => {
     await db.setLastLedger(100);
     await db.setLastLedger(200);
-    expect(db.getLastLedger()).toBe(200);
+    expect(await db.getLastLedger()).toBe(200);
   });
 });
 
@@ -393,7 +393,7 @@ describe("Ingester.tick() — event parsing and persistence", () => {
 
   afterEach(() => {
     fetchMock.mockRestore();
-    db.close();
+    await db.close();
     try { fs.unlinkSync(cfg.sqlitePath); } catch { /* */ }
   });
 
@@ -424,7 +424,7 @@ describe("Ingester.tick() — event parsing and persistence", () => {
     const count = await ingester.tick();
 
     expect(count).toBe(1);
-    const claims = db.claimsByWallet(holder) as Array<{ credential_type: string; revoked: number }>;
+    const claims = await db.claimsByWallet(holder) as Array<{ credential_type: string; revoked: number }>;
     expect(claims.length).toBe(1);
     expect(claims[0].credential_type).toBe("kyc");
     expect(claims[0].revoked).toBe(0);
@@ -474,8 +474,8 @@ describe("Ingester.tick() — event parsing and persistence", () => {
     const count = await ingester.tick();
 
     expect(count).toBe(2);
-    expect((db.claimsByWallet(h1) as object[]).length).toBe(1);
-    expect((db.claimsByWallet(h2) as object[]).length).toBe(1);
+    expect(((await db.claimsByWallet(h1) as object[]).length).toBe(1);
+    expect(((await db.claimsByWallet(h2) as object[]).length).toBe(1);
   });
 
   it("persists from fixtures/indexer/verified-event.json when it exists", async () => {
@@ -506,7 +506,7 @@ describe("DB stats", async () => {
   });
 
   afterEach(() => {
-    db.close();
+    await db.close();
     try { fs.unlinkSync(cfg.sqlitePath); } catch { /* */ }
   });
 
@@ -532,7 +532,7 @@ describe("DB stats", async () => {
     await db.upsertClaim({ ...base, wallet: "GHC" });
     await db.revokeClaim("GHC", "kyc");
 
-    const stats = db.stats() as Array<{ credential_type: string; total: number; active: number; revoked: number }>;
+    const stats = await db.stats() as Array<{ credential_type: string; total: number; active: number; revoked: number }>;
     const kyc = stats.find((s) => s.credential_type === "kyc");
     expect(kyc).toBeDefined();
     expect(kyc!.total).toBe(3);
