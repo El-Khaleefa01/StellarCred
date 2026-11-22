@@ -264,8 +264,8 @@ describe("DB persistence — upsertClaim", () => {
       reason_code: "other",
     });
     expect((await db.claimsByWallet("GHOLDER_A") as object[]).length).toBe(1);
-    expect(((await db.claimsByWallet("GHOLDER_B") as object[]).length).toBe(1);
-    expect(((await db.claimsByWallet("GHOLDER_C") as object[]).length).toBe(0);
+    expect((await db.claimsByWallet("GHOLDER_B") as object[]).length).toBe(1);
+    expect((await db.claimsByWallet("GHOLDER_C") as object[]).length).toBe(0);
   });
 });
 
@@ -277,12 +277,12 @@ describe("DB persistence — revokeClaim", () => {
   let db: Db;
   let cfg: Config;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     cfg = makeConfig();
     db = makeTmpDb(cfg);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     await db.close();
     try { fs.unlinkSync(cfg.sqlitePath); } catch { /* */ }
   });
@@ -350,12 +350,12 @@ describe("DB cursor durability", () => {
   let db: Db;
   let cfg: Config;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     cfg = makeConfig();
     db = makeTmpDb(cfg);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     await db.close();
     try { fs.unlinkSync(cfg.sqlitePath); } catch { /* */ }
   });
@@ -385,13 +385,13 @@ describe("Ingester.tick() — event parsing and persistence", () => {
   let cfg: Config;
   let fetchMock: jest.SpyInstance;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     cfg = makeConfig({ finalityLag: 0 });
     db = makeTmpDb(cfg);
     fetchMock = jest.spyOn(global, "fetch");
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     fetchMock.mockRestore();
     await db.close();
     try { fs.unlinkSync(cfg.sqlitePath); } catch { /* */ }
@@ -474,8 +474,8 @@ describe("Ingester.tick() — event parsing and persistence", () => {
     const count = await ingester.tick();
 
     expect(count).toBe(2);
-    expect(((await db.claimsByWallet(h1) as object[]).length).toBe(1);
-    expect(((await db.claimsByWallet(h2) as object[]).length).toBe(1);
+    expect((await db.claimsByWallet(h1) as object[]).length).toBe(1);
+    expect((await db.claimsByWallet(h2) as object[]).length).toBe(1);
   });
 
   it("persists from fixtures/indexer/verified-event.json when it exists", async () => {
@@ -500,12 +500,12 @@ describe("DB stats", async () => {
   let db: Db;
   let cfg: Config;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     cfg = makeConfig();
     db = makeTmpDb(cfg);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     await db.close();
     try { fs.unlinkSync(cfg.sqlitePath); } catch { /* */ }
   });
