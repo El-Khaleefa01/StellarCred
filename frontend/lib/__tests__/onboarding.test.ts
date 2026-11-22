@@ -23,11 +23,10 @@ let ls: ReturnType<typeof mockStorage>;
 beforeEach(() => {
   ls = mockStorage();
   vi.stubGlobal("localStorage", ls);
-  vi.stubGlobal("window", {
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  });
+  vi.spyOn(window, "addEventListener");
+  vi.spyOn(window, "removeEventListener");
+  vi.spyOn(window, "dispatchEvent");
+  Object.defineProperty(window, "localStorage", { configurable: true, value: ls });
 });
 
 afterEach(() => {
