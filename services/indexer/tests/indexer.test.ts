@@ -189,6 +189,7 @@ describe("DB persistence — upsertClaim", () => {
       ledger_sequence: 500,
       threshold: null,
       revoked: 0,
+      reason_code: "other",
     };
     db.upsertClaim(row);
     const claims = db.claimsByWallet("GHOLDER0001") as ReturnType<Db["claimsByWallet"]>;
@@ -210,6 +211,7 @@ describe("DB persistence — upsertClaim", () => {
       ledger_sequence: 600,
       threshold: 21,
       revoked: 0,
+      reason_code: "other",
     };
     db.upsertClaim(row);
     db.upsertClaim(row); // duplicate — must not throw or double-insert
@@ -227,6 +229,7 @@ describe("DB persistence — upsertClaim", () => {
       ledger_sequence: 700,
       threshold: 100_000,
       revoked: 0,
+      reason_code: "other",
     };
     db.upsertClaim(row);
     // Re-ingest with updated expiry (e.g. re-proved with new TTL)
@@ -247,6 +250,7 @@ describe("DB persistence — upsertClaim", () => {
       ledger_sequence: 100,
       threshold: null,
       revoked: 0,
+      reason_code: "other",
     });
     db.upsertClaim({
       wallet: "GHOLDER_B",
@@ -257,6 +261,7 @@ describe("DB persistence — upsertClaim", () => {
       ledger_sequence: 101,
       threshold: null,
       revoked: 0,
+      reason_code: "other",
     });
     expect((db.claimsByWallet("GHOLDER_A") as object[]).length).toBe(1);
     expect((db.claimsByWallet("GHOLDER_B") as object[]).length).toBe(1);
@@ -292,6 +297,7 @@ describe("DB persistence — revokeClaim", () => {
       ledger_sequence: 200,
       threshold: 50_000,
       revoked: 0,
+      reason_code: "other",
     });
     db.revokeClaim("GHOLDER_REV", "funds");
     const claims = db.claimsByWallet("GHOLDER_REV") as Array<{ revoked: number }>;
@@ -309,6 +315,7 @@ describe("DB persistence — revokeClaim", () => {
       ledger_sequence: 300,
       threshold: null,
       revoked: 0,
+      reason_code: "other",
     });
     db.upsertClaim({
       wallet: "GHOLDER_MULTI",
@@ -319,6 +326,7 @@ describe("DB persistence — revokeClaim", () => {
       ledger_sequence: 301,
       threshold: 21,
       revoked: 0,
+      reason_code: "other",
     });
     db.revokeClaim("GHOLDER_MULTI", "kyc");
     const claims = db.claimsByWallet("GHOLDER_MULTI") as Array<{ credential_type: string; revoked: number }>;
@@ -517,6 +525,7 @@ describe("DB stats", () => {
       ledger_sequence: 100,
       threshold: null,
       revoked: 0,
+      reason_code: "other",
     };
     db.upsertClaim({ ...base, wallet: "GHA" });
     db.upsertClaim({ ...base, wallet: "GHB" });
