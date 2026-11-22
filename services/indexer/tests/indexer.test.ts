@@ -484,7 +484,7 @@ describe("Ingester.tick() — event parsing and persistence", () => {
 
     const ev = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
     ev.contract_id = CONTRACT_ID; // ensure it matches our test contract
-    mockHorizon(200, [ev]);
+    mockHorizon(600, [ev]);
 
     const ingester = createIngester(cfg, db);
     const count = await ingester.tick();
