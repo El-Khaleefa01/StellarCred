@@ -15,12 +15,12 @@
 
   /* Borders - Enhanced for better visibility */
   --border: rgba(255, 255, 255, 0.09);
-  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-strong: rgba(255, 255, 255, 0.35);
 
   /* Text - WCAG AA compliant (4.5:1 minimum contrast) */
   --text: #f5f5fa;
   --muted: #a8a8b8;
-  --faint: #6e6e80;
+  --faint: #7d7d8f;
 
   /* Accent - semantic green - WCAG AA compliant */
   --accent: #4aeaa4;
