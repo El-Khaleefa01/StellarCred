@@ -50,12 +50,12 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
-  mockOnboardingState = {
+  Object.assign(mockOnboardingState, {
     state: { step: 4, dismissed: false, completed: false },
     currentStep: "generate-proof",
     mounted: true,
     resumeAt: vi.fn(),
-  };
+  });
   mockWallet.address = "GTEST";
 });
 
