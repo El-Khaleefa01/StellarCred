@@ -50,15 +50,21 @@ describe("telemetry-privacy-regression (#975)", () => {
     const mockRuns: ProofRun[] = [
       {
         id: "run-1",
+        status: "ok",
         credentialType: "kyc",
-        timestamp: 1700000000,
+        startedAt: 1700000000000,
         stages: [
           { stage: "witness", durationMs: 200, budgetMs: 500, overBudget: false },
           { stage: "prove", durationMs: 800, budgetMs: 1000, overBudget: false },
           { stage: "submit", durationMs: 400, budgetMs: 600, overBudget: false },
         ],
-        timeToFirstProofMs: 1400,
+        timeToFirstProofMs: 1000,
+        totalMs: 1400,
+        exceededBudget: false,
         deviceClass: "desktop",
+        cores: 8,
+        memoryGB: 8,
+        warm: false,
       },
     ];
 
