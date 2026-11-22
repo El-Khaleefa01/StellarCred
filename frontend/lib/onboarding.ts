@@ -143,15 +143,15 @@ export function useOnboarding() {
   // Un-dismiss and jump to a specific step — used by the contextual nudge
   // to re-open the wizard at a specific point after the user dismissed it.
   const resumeAt = useCallback((index: number) => {
-    setState((_prev) => {
-      const next: OnboardingState = {
-        step: Math.max(0, Math.min(index, ONBOARDING_STEPS.length - 1)),
-        dismissed: false,
-        completed: false,
-      };
-      saveState(next);
-      return next;
-    });
+    const next: OnboardingState = {
+      step: Math.max(0, Math.min(index, ONBOARDING_STEPS.length - 1)),
+      dismissed: false,
+      completed: false,
+    };
+    // Persist before notifying other hook instances; the reset listener reads
+    // from storage synchronously and must not overwrite this pending update.
+    saveState(next);
+    setState(next);
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event(RESET_EVENT));
     }
