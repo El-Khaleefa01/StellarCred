@@ -39,14 +39,14 @@ export default function GlobalError({
               width: 64,
               height: 64,
               borderRadius: "50%",
-              background: "rgba(240,96,77,0.1)",
-              border: "1px solid rgba(240,96,77,0.25)",
+              background: "rgba(255, 115, 104,0.1)",
+              border: "1px solid rgba(255, 115, 104,0.25)",
               display: "grid",
               placeItems: "center",
               marginBottom: "1.5rem",
             }}
           >
-            <IconAlertTriangle size={28} color="#f0604d" stroke={1.5} />
+            <IconAlertTriangle size={28} color="#ff7368" stroke={1.5} />
           </div>
 
           <h1 style={{ fontSize: "2rem", margin: "0 0 0.5rem" }}>Critical error</h1>
@@ -65,7 +65,7 @@ export default function GlobalError({
                 padding: "0.55rem 1.1rem",
                 borderRadius: "10px",
                 border: "none",
-                background: "#3ecf8e",
+                background: "#4aeaa4",
                 color: "#05050a",
                 fontWeight: 600,
                 fontSize: "0.85rem",

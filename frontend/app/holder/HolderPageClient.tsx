@@ -196,8 +196,8 @@ function HolderInner() {
           style={{
             padding: "0.85rem 1rem",
             borderRadius: "var(--radius)",
-            background: "rgba(62,207,142,0.1)",
-            border: "1px solid rgba(62,207,142,0.3)",
+            background: "rgba(74, 234, 164,0.1)",
+            border: "1px solid rgba(74, 234, 164,0.3)",
             color: "var(--text)",
             display: "flex",
             alignItems: "center",
@@ -239,9 +239,9 @@ function HolderInner() {
               style={{
                 padding: "0.85rem 1.15rem",
                 backgroundColor:
-                  expired.length > 0 ? "rgba(239, 68, 68, 0.08)" : "rgba(234, 179, 8, 0.08)",
+                  expired.length > 0 ? "rgba(255, 115, 104, 0.08)" : "rgba(250, 197, 88, 0.08)",
                 borderColor:
-                  expired.length > 0 ? "rgba(239, 68, 68, 0.3)" : "rgba(234, 179, 8, 0.3)",
+                  expired.length > 0 ? "rgba(255, 115, 104, 0.3)" : "rgba(250, 197, 88, 0.3)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -330,8 +330,8 @@ function HolderInner() {
                 style={{
                   marginBottom: "1rem",
                   padding: "0.75rem 1rem",
-                  background: "rgba(239, 68, 68, 0.1)",
-                  border: "1px solid rgba(239, 68, 68, 0.2)",
+                  background: "rgba(255, 115, 104, 0.1)",
+                  border: "1px solid rgba(255, 115, 104, 0.2)",
                   borderRadius: "8px",
                   alignItems: "center",
                 }}
@@ -341,7 +341,7 @@ function HolderInner() {
                 </span>
                 <button
                   className="btn btn-sm btn-ghost"
-                  style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }}
+                  style={{ color: "#ef4444", borderColor: "rgba(255, 115, 104, 0.3)" }}
                   onClick={() =>
                     setConfirmBulkAction({
                       type: "clear-expired",

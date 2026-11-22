@@ -431,7 +431,7 @@ export function GuardianRecoveryModal({
                 <div
                   style={{
                     border: "1px solid var(--accent-soft)",
-                    background: "rgba(62, 207, 142, 0.05)",
+                    background: "rgba(74, 234, 164, 0.05)",
                     borderRadius: "var(--radius-sm)",
                     padding: "0.85rem 1rem",
                   }}
@@ -780,8 +780,8 @@ export function GuardianRecoveryModal({
                 {recoveryError && (
                   <div
                     style={{
-                      border: "1px solid rgba(240, 96, 77, 0.3)",
-                      background: "rgba(240, 96, 77, 0.08)",
+                      border: "1px solid rgba(255, 115, 104, 0.3)",
+                      background: "rgba(255, 115, 104, 0.08)",
                       borderRadius: "var(--radius-xs)",
                       padding: "0.6rem 0.8rem",
                       color: "var(--danger)",
@@ -811,7 +811,7 @@ export function GuardianRecoveryModal({
                 <div
                   style={{
                     border: "1px solid var(--accent-soft)",
-                    background: "rgba(62, 207, 142, 0.05)",
+                    background: "rgba(74, 234, 164, 0.05)",
                     borderRadius: "var(--radius-sm)",
                     padding: "0.8rem 1rem",
                   }}

@@ -16,7 +16,7 @@ export function VerifyLinkError({ error, onBack }: { error: VerifyError; onBack:
           width: 48,
           height: 48,
           borderRadius: "50%",
-          background: "rgba(240, 96, 77, 0.12)",
+          background: "rgba(255, 115, 104, 0.12)",
           marginBottom: "1rem",
         }}
       >

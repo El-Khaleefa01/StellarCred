@@ -62,9 +62,9 @@ export function Timeline({ events }: TimelineProps) {
                     display: "flex", 
                     alignItems: "center", 
                     justifyContent: "center",
-                    background: isExpired ? "rgba(240, 96, 77, 0.15)" : "rgba(62, 207, 142, 0.15)",
+                    background: isExpired ? "rgba(255, 115, 104, 0.15)" : "rgba(74, 234, 164, 0.15)",
                     color: info.color,
-                    border: `1px solid ${isExpired ? "rgba(240, 96, 77, 0.3)" : "rgba(62, 207, 142, 0.3)"}`
+                    border: `1px solid ${isExpired ? "rgba(255, 115, 104, 0.3)" : "rgba(74, 234, 164, 0.3)"}`
                   }}
                 >
                   {info.icon}
@@ -74,7 +74,7 @@ export function Timeline({ events }: TimelineProps) {
                     style={{ 
                       width: 1, 
                       flexGrow: 1, 
-                      background: isExpired ? "rgba(240, 96, 77, 0.3)" : "var(--border)", 
+                      background: isExpired ? "rgba(255, 115, 104, 0.3)" : "var(--border)", 
                       margin: "4px 0" 
                     }} 
                   />

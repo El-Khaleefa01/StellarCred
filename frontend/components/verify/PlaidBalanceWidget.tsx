@@ -40,8 +40,8 @@ export function PlaidBalanceWidget({
       style={{
         padding: "0.65rem 0.9rem",
         borderRadius: "var(--radius)",
-        background: "rgba(62,207,142,0.05)",
-        border: "1px solid rgba(62,207,142,0.2)",
+        background: "rgba(74, 234, 164,0.05)",
+        border: "1px solid rgba(74, 234, 164,0.2)",
       }}
     >
       <div
@@ -95,7 +95,7 @@ export function PlaidBalanceWidget({
       <hr
         style={{
           margin: "0.5rem 0",
-          borderColor: "rgba(62,207,142,0.15)",
+          borderColor: "rgba(74, 234, 164,0.15)",
         }}
       />
       <div className="between" style={{ alignItems: "center" }}>

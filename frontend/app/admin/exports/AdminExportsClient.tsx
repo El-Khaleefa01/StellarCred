@@ -191,7 +191,7 @@ export function AdminExportsClient({
                             borderRadius: "4px",
                             fontSize: "0.75rem",
                             fontWeight: 600,
-                            background: "rgba(240, 96, 77, 0.1)",
+                            background: "rgba(255, 115, 104, 0.1)",
                             color: "var(--danger)",
                           }}
                         >
@@ -260,7 +260,7 @@ export function AdminExportsClient({
             fontWeight: 500,
             background: chainValid
               ? "var(--accent-soft)"
-              : "rgba(240, 96, 77, 0.1)",
+              : "rgba(255, 115, 104, 0.1)",
             color: chainValid ? "var(--accent)" : "var(--danger)",
             border: `1px solid ${
               chainValid ? "var(--accent)" : "var(--danger)"

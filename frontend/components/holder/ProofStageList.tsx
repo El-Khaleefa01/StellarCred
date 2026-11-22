@@ -65,7 +65,7 @@ function ElapsedBar({ elapsedMs, expectedMs }: { elapsedMs: number; expectedMs: 
         style={{
           height: "100%",
           width: `${pct}%`,
-          background: "var(--accent, #3ecf8e)",
+          background: "var(--accent, #4aeaa4)",
           transition: "width 0.5s linear",
         }}
       />
@@ -124,16 +124,16 @@ export function ProofStageList({
                 marginTop: 1,
                 border: `1px solid ${
                   isDone
-                    ? "var(--accent, #3ecf8e)"
+                    ? "var(--accent, #4aeaa4)"
                     : isRunning
-                      ? "rgba(62,207,142,0.5)"
+                      ? "rgba(74, 234, 164,0.5)"
                       : "var(--border-strong, rgba(255,255,255,0.15))"
                 }`,
-                background: isDone ? "var(--accent, #3ecf8e)" : "transparent",
+                background: isDone ? "var(--accent, #4aeaa4)" : "transparent",
                 color: isDone
                   ? "var(--bg, #0d0d0d)"
                   : isRunning
-                    ? "var(--accent, #3ecf8e)"
+                    ? "var(--accent, #4aeaa4)"
                     : "var(--faint, rgba(255,255,255,0.3))",
                 transition: "all 0.25s ease",
               }}
@@ -172,7 +172,7 @@ export function ProofStageList({
                   style={{
                     fontSize: "0.7rem",
                     color: isRunning
-                      ? "var(--accent, #3ecf8e)"
+                      ? "var(--accent, #4aeaa4)"
                       : "var(--faint, rgba(255,255,255,0.3))",
                     whiteSpace: "nowrap",
                     flexShrink: 0,

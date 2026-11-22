@@ -101,8 +101,8 @@ function VerifierInner() {
             marginBottom: "1.5rem",
             padding: "0.85rem 1rem",
             borderRadius: "var(--radius)",
-            background: "rgba(62,207,142,0.08)",
-            border: "1px solid rgba(62,207,142,0.35)",
+            background: "rgba(74, 234, 164,0.08)",
+            border: "1px solid rgba(74, 234, 164,0.35)",
             fontSize: "0.875rem",
             color: "var(--text)",
             display: "flex",
@@ -206,7 +206,7 @@ function VerifierInner() {
         <div
           className="card"
           style={{
-            borderColor: eligible ? "rgba(62,207,142,0.4)" : "var(--border)",
+            borderColor: eligible ? "rgba(74, 234, 164,0.4)" : "var(--border)",
             transition: "border-color 0.5s var(--ease)",
           }}
         >

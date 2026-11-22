@@ -30,7 +30,7 @@ export function ProofProgress({ steps }: { steps: ProgressStep[] }) {
                   placeItems: "center",
                   border: `1px solid ${
                     s.status === "done" ? "var(--accent)" :
-                    s.status === "active" ? "rgba(62,207,142,0.5)" :
+                    s.status === "active" ? "rgba(74, 234, 164,0.5)" :
                     "var(--border-strong)"
                   }`,
                   background: s.status === "done" ? "var(--accent)" : "transparent",
@@ -72,8 +72,8 @@ export function ProofProgress({ steps }: { steps: ProgressStep[] }) {
                     style={{
                       fontSize: "0.68rem",
                       color: "var(--accent)",
-                      background: "rgba(62,207,142,0.1)",
-                      border: "1px solid rgba(62,207,142,0.2)",
+                      background: "rgba(74, 234, 164,0.1)",
+                      border: "1px solid rgba(74, 234, 164,0.2)",
                       borderRadius: 999,
                       padding: "0.12rem 0.45rem",
                       fontWeight: 500,

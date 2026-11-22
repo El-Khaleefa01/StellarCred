@@ -68,8 +68,8 @@ export default function ComponentShowcasePage() {
                   width: 36,
                   height: 36,
                   borderRadius: "var(--radius-sm)",
-                  background: "rgba(62,207,142,0.08)",
-                  border: "1px solid rgba(62,207,142,0.18)",
+                  background: "rgba(74, 234, 164,0.08)",
+                  border: "1px solid rgba(74, 234, 164,0.18)",
                   display: "grid",
                   placeItems: "center",
                 }}

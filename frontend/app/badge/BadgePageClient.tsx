@@ -90,12 +90,12 @@ function BadgeContent() {
 
   // Amber is reserved for "cannot determine" — never used for a negative.
   const toneColor =
-    status === "verified" ? "#10b981" : status === "unverified" ? "#ef4444" : "#e3b341";
+    status === "verified" ? "#10b981" : status === "unverified" ? "#ef4444" : "#fac558";
   const toneBg =
     status === "verified"
       ? "rgba(16, 185, 129, 0.15)"
       : status === "unverified"
-        ? "rgba(239, 68, 68, 0.15)"
+        ? "rgba(255, 115, 104, 0.15)"
         : "rgba(227, 179, 65, 0.15)";
 
   const claimLabels: Record<string, string> = {
@@ -217,7 +217,7 @@ function BadgeContent() {
                   {wallet ? `(${truncateHash(wallet)})` : ""}
                 </span>
               ) : status === "unknown" ? (
-                <span style={{ color: "#e3b341" }}>
+                <span style={{ color: "#fac558" }}>
                   Unknown — network unavailable
                 </span>
               ) : (

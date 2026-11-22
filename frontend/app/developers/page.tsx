@@ -208,7 +208,7 @@ const verified = await StellarCred.hasClaim(wallet, "kyc");`}</Code>
           <span className="mono">verifyWalletClaim</span> against the on-chain
           ProofRegistry before granting access.
         </p>
-        <p className="muted" style={{ fontSize: "0.95rem", lineHeight: 1.7, marginTop: "0.75rem", borderLeft: "3px solid #f59e0b", paddingLeft: "0.75rem" }}>
+        <p className="muted" style={{ fontSize: "0.95rem", lineHeight: 1.7, marginTop: "0.75rem", borderLeft: "3px solid #fac558", paddingLeft: "0.75rem" }}>
           <strong>⚠️ Wallet spoofing pitfall:</strong> Calling <span className="mono">hasClaim(wallet)</span> alone on your backend only proves that <em>someone</em> owns credentials for that address &mdash; not that the current caller actually controls that private key. For secure access gating, have the user sign a challenge and call <span className="mono">verifyWalletClaim</span>.
         </p>
         <Code>{`import { StellarCred, createWalletChallenge, verifyWalletClaim } from "@stellarcred/sdk";

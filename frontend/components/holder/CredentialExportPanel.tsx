@@ -273,9 +273,9 @@ export function CredentialExportPanel() {
           alignItems: "flex-start",
           gap: "0.4rem",
           padding: "0.6rem 0.75rem",
-          border: "1px solid rgba(62,207,142,0.2)",
+          border: "1px solid rgba(74, 234, 164,0.2)",
           borderRadius: "8px",
-          backgroundColor: "rgba(62,207,142,0.05)",
+          backgroundColor: "rgba(74, 234, 164,0.05)",
         }}
       >
         <IconShieldCheck
