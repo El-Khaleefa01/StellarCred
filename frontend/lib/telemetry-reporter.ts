@@ -6,6 +6,8 @@
 
 export type { ProofRun } from "./proof-perf";
 
+export type { ProofRun } from "./proof-perf";
+
 import {
   getProofRuns,
   updateProofRun,
