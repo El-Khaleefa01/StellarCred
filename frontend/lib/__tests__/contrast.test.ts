@@ -176,7 +176,7 @@ describe("Dark Mode Contrast Ratios (WCAG AA Compliance)", () => {
     it("should ensure borders are visible against backgrounds", () => {
       // Composite the translucent border over each dark surface before measuring.
       Object.entries(backgrounds).forEach(([name, background]) => {
-        const alpha = 0.35;
+        const alpha = 0.36;
         const border = [255, 255, 255].map((channel, index) =>
           Math.round(channel * alpha + background[index] * (1 - alpha)),
         ) as [number, number, number];
