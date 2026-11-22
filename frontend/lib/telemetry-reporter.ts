@@ -4,6 +4,8 @@
 // (GitHub #432). Imported by the debug panel (and potentially tooling) only —
 // not by the holder page — so its weight stays out of the proving bundle.
 
+export type { ProofRun } from "./proof-perf";
+
 import {
   getProofRuns,
   updateProofRun,
