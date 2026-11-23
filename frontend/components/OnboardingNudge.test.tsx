@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
     state: { step: 4, dismissed: false, completed: false },
     currentStep: "generate-proof" as string,
     mounted: true,
-    resumeAt: vi.fn(),
+    resumeAt: () => {},
   },
   mockWallet: { address: "GTEST" as string | null },
 }));
@@ -52,7 +52,7 @@ beforeEach(() => {
   };
   mocks.mockOnboardingState.currentStep = "generate-proof";
   mocks.mockOnboardingState.mounted = true;
-  mocks.mockOnboardingState.resumeAt.mockReset();
+  mocks.mockOnboardingState.resumeAt = vi.fn();
   mocks.mockWallet.address = "GTEST";
 });
 
