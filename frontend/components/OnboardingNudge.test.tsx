@@ -7,7 +7,7 @@ import { OnboardingNudge } from "./OnboardingNudge";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
-const { mockOnboardingState, mockWallet } = vi.hoisted(() => ({
+const mocks = vi.hoisted(() => ({
   mockOnboardingState: {
   state: { step: 4, dismissed: false, completed: false },
   currentStep: "generate-proof" as string,
@@ -26,10 +26,10 @@ vi.mock("@/lib/onboarding", () => ({
     "generate-proof",
     "unlock",
   ],
-  useOnboarding: () => mockOnboardingState,
+  useOnboarding: () => mocks.mockOnboardingState,
 }));
 vi.mock("@/lib/wallet-context", () => ({
-  useWallet: () => mockWallet,
+  useWallet: () => mocks.mockWallet,
 }));
 
 vi.mock("next-intl", () => ({
@@ -50,13 +50,13 @@ beforeEach(() => {
 afterEach(() => {
   window.localStorage.clear();
   vi.clearAllMocks();
-  Object.assign(mockOnboardingState, {
+  Object.assign(mocks.mockOnboardingState, {
     state: { step: 4, dismissed: false, completed: false },
     currentStep: "generate-proof",
     mounted: true,
     resumeAt: vi.fn(),
   });
-  mockWallet.address = "GTEST";
+  mocks.mocks.mockWallet.address = "GTEST";
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ describe("OnboardingNudge — gating", () => {
   });
 
   it("returns null when not mounted yet", () => {
-    mockOnboardingState.mounted = false;
+    mocks.mockOnboardingState.mounted = false;
     const { container } = render(<OnboardingNudge />);
     expect(container.firstChild).toBeNull();
   });
@@ -116,7 +116,7 @@ describe("OnboardingNudge — dismiss", () => {
 describe("OnboardingNudge — Continue setup", () => {
   it("calls resumeAt(4) when the Continue setup button is clicked", () => {
     const resumeAt = vi.fn();
-    mockOnboardingState.resumeAt = resumeAt;
+    mocks.mockOnboardingState.resumeAt = resumeAt;
 
     render(<OnboardingNudge />);
     fireEvent.click(screen.getByText("Continue setup"));
