@@ -18,11 +18,9 @@ export function QueueTable({ initialRecords }: { initialRecords: IssuanceQueueRe
   const [error, setError] = useState<string | null>(null);
 
   async function act(id: string, action: "retry" | "resolve") {
-    const actor = window.prompt("Enter your admin ID:")?.trim();
-    if (!actor) return;
     setBusy(id);
     setError(null);
-    const res = await issuanceQueueAction(id, action, actor);
+    const res = await issuanceQueueAction(id, action);
     setBusy(null);
     if (!res.success) {
       setError(res.error);
