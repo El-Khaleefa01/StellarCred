@@ -16,6 +16,7 @@ function sign(payload: string, secret: string): string {
   return createHmac("sha256", secret).update(payload).digest("base64url");
 }
 
+/** Create a signed cookie value with an absolute expiry timestamp. */
 export async function createAdminSession({
   actor,
   ttlSeconds,
