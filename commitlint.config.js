@@ -21,6 +21,8 @@ module.exports = {
     // #816 attribute-normalization commit was pushed with a bare "# …" subject
     // (no conventional type); history is already on the PR branch, exempt it
     (msg) => msg.startsWith('# remove duplicated attribute normalization'),
+    // Historical cleanup commit used the non-standard "lint" type; exempt it without rewriting branch history.
+    (msg) => msg.startsWith("lint: remove unused LoginPage render import"),
     // Skip Freebuff bot commits, whose subject is a generated file-change summary
     (msg) => /^\s*Update\s+\d+\s+files/i.test(msg) && /Freebuff Agent/i.test(msg),
   ],
