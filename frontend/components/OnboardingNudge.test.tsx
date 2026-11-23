@@ -12,7 +12,8 @@ const { mockOnboardingState, mockWallet } = vi.hoisted(() => ({
   state: { step: 4, dismissed: false, completed: false },
   currentStep: "generate-proof" as string,
   mounted: true,
-  resumeAt: vi.fn(),
+  // Keep the hoisted factory independent of the imported vi binding.
+  resumeAt: () => undefined,
   },
   mockWallet: { address: "GTEST" as string | null },
 }));
