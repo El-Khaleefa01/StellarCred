@@ -291,3 +291,154 @@ describe("runBackfill", () => {
     expect(sleep).toHaveBeenCalled();
   });
 });
+
+
+describe("runBackfill edge conditions", () => {
+  let dir: string;
+  const log = jest.fn();
+  const sleep = jest.fn(async () => undefined);
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "backfill-edge-"));
+    log.mockClear();
+    sleep.mockClear();
+    jest.spyOn(ingester, "parseEvent").mockImplementation(() => ({ kind: "unknown" }));
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("parses symbolic bounds case-insensitively and validates missing or forbidden bounds", () => {
+    expect(parseBackfillArgs(["--from", " GENESIS ", "--to", "HEAD"])).toMatchObject({
+      from: "genesis",
+      to: "head",
+    });
+    expect(() => parseBackfillArgs(["--from"])).toThrow(/requires a value/);
+    expect(() => parseBackfillArgs(["--from", "0"])).toThrow(/positive ledger number/);
+    expect(() => parseBackfillArgs(["--from", "head"])).toThrow(/cannot be "head"/);
+    expect(() => parseBackfillArgs(["--to", "genesis"])).toThrow(/cannot be "genesis"/);
+  });
+
+  it("rejects resume without a checkpoint and returns immediately for a completed checkpoint", async () => {
+    const checkpointPath = path.join(dir, "cp.json");
+    await expect(
+      runBackfill(config, makeDb().asDb, opts(dir, { resume: true }), {
+        fetchImpl: makeHorizon(1000, []),
+        log,
+        sleep,
+      }),
+    ).rejects.toThrow(/no checkpoint found/);
+
+    fs.writeFileSync(
+      checkpointPath,
+      JSON.stringify({
+        network: "testnet",
+        contractId: CONTRACT,
+        from: 100,
+        to: 200,
+        lastLedger: 200,
+        processed: 12,
+        done: true,
+        updatedAt: new Date().toISOString(),
+      }),
+    );
+    const result = await runBackfill(config, makeDb().asDb, opts(dir, { resume: true }), {
+      fetchImpl: makeHorizon(1000, []),
+      log,
+      sleep,
+    });
+    expect(result).toMatchObject({ batches: 0, processed: 12, lastLedger: 200 });
+  });
+
+  it("rejects an empty range after applying the finality ceiling", async () => {
+    await expect(
+      runBackfill(config, makeDb().asDb, opts(dir, { from: 500, to: "head" }), {
+        fetchImpl: makeHorizon(100, []),
+        log,
+        sleep,
+      }),
+    ).rejects.toThrow(/range 500\.\.94 is empty/);
+  });
+
+  it("handles a missing head ledger and a Horizon 404 events page", async () => {
+    await expect(
+      runBackfill(config, makeDb().asDb, opts(dir), {
+        fetchImpl: (async () =>
+          new Response(JSON.stringify({ _embedded: { records: [] } }))) as typeof fetch,
+        log,
+        sleep,
+      }),
+    ).rejects.toThrow(/No ledger returned/);
+
+    const fetchImpl = (async (input: string) => {
+      if (new URL(input).pathname === "/ledgers") {
+        return new Response(JSON.stringify({ _embedded: { records: [{ sequence: 1000 }] } }));
+      }
+      return new Response("not found", { status: 404 });
+    }) as typeof fetch;
+    const result = await runBackfill(config, makeDb().asDb, opts(dir), {
+      fetchImpl,
+      log,
+      sleep,
+    });
+    expect(result).toMatchObject({ processed: 0, batches: 1, lastLedger: 200 });
+  });
+
+  it("retries a network exception and processes revoked events without persisting unknown events", async () => {
+    const { db, asDb } = makeDb();
+    let headCalls = 0;
+    const fetchImpl = (async (input: string) => {
+      const url = new URL(input);
+      if (url.pathname === "/ledgers") {
+        headCalls++;
+        if (headCalls === 1) throw new Error("fetch failed: ECONNRESET");
+        return new Response(JSON.stringify({ _embedded: { records: [{ sequence: 1000 }] } }));
+      }
+      return new Response(
+        JSON.stringify({ _embedded: { records: [ev(100), ev(110)] } }),
+      );
+    }) as typeof fetch;
+
+    jest.spyOn(ingester, "parseEvent").mockImplementation((event) =>
+      event.ledger === 100
+        ? {
+            kind: "revoked",
+            holder: "GALICE",
+            credentialType: "kyc",
+            issuer: "GISSUER",
+            revokedAt: 1,
+            reasonCode: "issuer_revoked",
+            reason: "issuer_revoked",
+          }
+        : { kind: "unknown" },
+    );
+
+    const result = await runBackfill(config, asDb, opts(dir), {
+      fetchImpl,
+      log,
+      sleep,
+    });
+    expect(result.processed).toBe(1);
+    expect(db.revokeClaim).toHaveBeenCalledWith("GALICE", "kyc", "issuer_revoked");
+    expect(db.upsertClaim).not.toHaveBeenCalled();
+    expect(sleep).toHaveBeenCalled();
+  });
+
+  it("honours the 404 response for an empty events range and completes with zero events", async () => {
+    const fetchImpl = (async (input: string) => {
+      if (new URL(input).pathname === "/ledgers") {
+        return new Response(JSON.stringify({ _embedded: { records: [{ sequence: 1000 }] } }));
+      }
+      return new Response("missing", { status: 404 });
+    }) as typeof fetch;
+    const result = await runBackfill(config, makeDb().asDb, opts(dir), {
+      fetchImpl,
+      log,
+      sleep,
+    });
+    expect(result.processed).toBe(0);
+    expect(readCheckpoint(path.join(dir, "cp.json"))?.done).toBe(true);
+  });
+});
