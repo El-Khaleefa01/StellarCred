@@ -75,15 +75,30 @@ export const SAFE_FIELDS = [
   "traceparent",
 ];
 
-function sanitizeSafeValue(value: unknown): unknown {
+const CSP_VIOLATION_FIELDS = new Set([
+  "documentUri",
+  "blockedUri",
+  "sourceFile",
+  "effectiveDirective",
+  "disposition",
+  "lineNumber",
+  "columnNumber",
+  "statusCode",
+]);
+
+function sanitizeSafeValue(value: unknown, parentKey?: string): unknown {
   if (Array.isArray(value)) {
-    return value.map(sanitizeSafeValue);
+    return value.map((item) => sanitizeSafeValue(item));
   }
   if (value !== null && typeof value === "object") {
     const sanitized: Record<string, unknown> = {};
     for (const [key, nestedValue] of Object.entries(value)) {
-      if (SAFE_FIELDS.includes(key)) {
-        sanitized[key] = sanitizeSafeValue(nestedValue);
+      const allowed =
+        parentKey === "cspViolation"
+          ? CSP_VIOLATION_FIELDS.has(key)
+          : SAFE_FIELDS.includes(key);
+      if (allowed) {
+        sanitized[key] = sanitizeSafeValue(nestedValue, key);
       }
     }
     return sanitized;
@@ -95,7 +110,7 @@ export function stripSensitiveFields<T extends Record<string, unknown>>(obj: T):
   const result: Partial<T> = {};
   for (const [key, value] of Object.entries(obj)) {
     if (SAFE_FIELDS.includes(key)) {
-      (result as Record<string, unknown>)[key] = sanitizeSafeValue(value);
+      (result as Record<string, unknown>)[key] = sanitizeSafeValue(value, key);
     }
   }
   return result;
