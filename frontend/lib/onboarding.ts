@@ -75,11 +75,12 @@ export function resetOnboarding(): void {
 }
 
 export function useOnboarding() {
-  const [state, setState] = useState<OnboardingState>(DEFAULT_STATE);
+  // Read persisted state on the first client render. The mounted flag still
+  // prevents browser-only state from being displayed during SSR hydration.
+  const [state, setState] = useState<OnboardingState>(() => loadState());
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setState(loadState());
     setMounted(true);
 
     function onReset() {
