@@ -496,7 +496,7 @@ function HolderInner() {
   );
 }
 
-// useSearchParams() must be inside a Suspense boundary in the App Router.
+// Keep the client-side search-param consumer inside a Suspense boundary in the App Router.
 export default function HolderPageClient() {
   return (
     <Suspense fallback={null}>
