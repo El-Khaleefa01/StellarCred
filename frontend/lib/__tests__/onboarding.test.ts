@@ -10,7 +10,7 @@ import { useOnboarding, ONBOARDING_STEPS } from "../onboarding";
 let ls: Storage;
 
 async function renderOnboardingHook() {
-  const hook = await renderOnboardingHook();
+  const hook = renderHook(() => useOnboarding());
   await waitFor(() => expect(hook.result.current.mounted).toBe(true));
   return hook;
 }
@@ -28,14 +28,14 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-describe("useOnboarding — resumeAt", async () => {
+describe("useOnboarding — resumeAt", () => {
   it("jumps to the requested step, clears dismissed and completed", async () => {
     // Seed: user dismissed at step 2, completed=false
     ls.setItem("stellarcred:onboarding", JSON.stringify({ step: 2, dismissed: true, completed: false }));
 
     const { result } = await renderOnboardingHook();
 
-    act(async () => {
+    act(() => {
       result.current.resumeAt(4);
     });
 
@@ -48,7 +48,7 @@ describe("useOnboarding — resumeAt", async () => {
   it("clamps to the last valid step index when given an out-of-range high value", async () => {
     const { result } = await renderOnboardingHook();
 
-    act(async () => {
+    act(() => {
       result.current.resumeAt(99);
     });
 
@@ -59,7 +59,7 @@ describe("useOnboarding — resumeAt", async () => {
   it("clamps to step 0 when given a negative value", async () => {
     const { result } = await renderOnboardingHook();
 
-    act(async () => {
+    act(() => {
       result.current.resumeAt(-5);
     });
 
@@ -70,7 +70,7 @@ describe("useOnboarding — resumeAt", async () => {
   it("persists the new state to localStorage", async () => {
     const { result } = await renderOnboardingHook();
 
-    act(async () => {
+    act(() => {
       result.current.resumeAt(3);
     });
 
@@ -83,7 +83,7 @@ describe("useOnboarding — resumeAt", async () => {
   it("dispatches a reset event so other components re-sync", async () => {
     const { result } = await renderOnboardingHook();
 
-    act(async () => {
+    act(() => {
       result.current.resumeAt(1);
     });
 
@@ -91,7 +91,7 @@ describe("useOnboarding — resumeAt", async () => {
   });
 });
 
-describe("useOnboarding — core navigation", async () => {
+describe("useOnboarding — core navigation", () => {
   it("starts at welcome for a fresh user", async () => {
     const { result } = await renderOnboardingHook();
     expect(result.current.currentStep).toBe("welcome");
