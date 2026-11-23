@@ -377,7 +377,7 @@ describe("runBackfill edge conditions", () => {
         return new Response(JSON.stringify({ _embedded: { records: [{ sequence: 1000 }] } }));
       }
       return new Response("not found", { status: 404 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     const result = await runBackfill(config, makeDb().asDb, opts(dir), {
       fetchImpl,
       log,
@@ -399,7 +399,7 @@ describe("runBackfill edge conditions", () => {
       return new Response(
         JSON.stringify({ _embedded: { records: [ev(100), ev(110)] } }),
       );
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     jest.spyOn(ingester, "parseEvent").mockImplementation((event) =>
       event.ledger === 100
@@ -432,7 +432,7 @@ describe("runBackfill edge conditions", () => {
         return new Response(JSON.stringify({ _embedded: { records: [{ sequence: 1000 }] } }));
       }
       return new Response("missing", { status: 404 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     const result = await runBackfill(config, makeDb().asDb, opts(dir), {
       fetchImpl,
       log,
