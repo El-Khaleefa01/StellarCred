@@ -16,10 +16,17 @@ const { mockOnboardingState, mockWallet } = vi.hoisted(() => ({
   },
   mockWallet: { address: "GTEST" as string | null },
 }));
-vi.mock("@/lib/onboarding", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/onboarding")>();
-  return { ...actual, useOnboarding: () => mockOnboardingState };
-});
+vi.mock("@/lib/onboarding", () => ({
+  ONBOARDING_STEPS: [
+    "welcome",
+    "connect-wallet",
+    "get-credential",
+    "verify-trust",
+    "generate-proof",
+    "unlock",
+  ],
+  useOnboarding: () => mockOnboardingState,
+}));
 vi.mock("@/lib/wallet-context", () => ({
   useWallet: () => mockWallet,
 }));
@@ -35,20 +42,12 @@ vi.mock("next-intl", () => ({
   },
 }));
 
-// localStorage mock
-let store: Record<string, string> = {};
 beforeEach(() => {
-  store = {};
-  vi.stubGlobal("localStorage", {
-    getItem: vi.fn((k: string) => store[k] ?? null),
-    setItem: vi.fn((k: string, v: string) => { store[k] = v; }),
-    removeItem: vi.fn((k: string) => { delete store[k]; }),
-    clear: vi.fn(() => { store = {}; }),
-  });
+  window.localStorage.clear();
 });
 
 afterEach(() => {
-  vi.unstubAllGlobals();
+  window.localStorage.clear();
   vi.clearAllMocks();
   Object.assign(mockOnboardingState, {
     state: { step: 4, dismissed: false, completed: false },
@@ -94,7 +93,7 @@ describe("OnboardingNudge — gating", () => {
   });
 
   it("returns null when the nudge was previously dismissed via localStorage", () => {
-    store["stellarcred:onboarding-nudge-dismissed"] = "1";
+    window.localStorage.setItem("stellarcred:onboarding-nudge-dismissed", "1");
     const { container } = render(<OnboardingNudge />);
     expect(container.firstChild).toBeNull();
   });
@@ -109,10 +108,7 @@ describe("OnboardingNudge — dismiss", () => {
     fireEvent.click(dismissBtn);
 
     expect(container.firstChild).toBeNull();
-    expect(localStorage.setItem).toHaveBeenCalledWith(
-      "stellarcred:onboarding-nudge-dismissed",
-      "1",
-    );
+    expect(window.localStorage.getItem("stellarcred:onboarding-nudge-dismissed")).toBe("1");
   });
 });
 
