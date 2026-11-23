@@ -18,7 +18,7 @@ module.exports = {
       msg.startsWith('fix(#342): Complete admin rotation'),
     // Skip bot-generated commits (e.g. greptile-apps[bot], dependabot)
     (msg) => /^\s*(?:Update\s+\.github\/|Bump\s+)/i.test(msg),
-    // #816 attribute-normalization commit was pushed with a bare "# …" subject
+    // #816 attribute-normalization commit was pushed with a bare "#" subject
     // (no conventional type); history is already on the PR branch, exempt it
     (msg) => msg.startsWith('# remove duplicated attribute normalization'),
     // Historical cleanup commit used the non-standard "lint" type; exempt it without rewriting branch history.
@@ -26,6 +26,11 @@ module.exports = {
     // Skip the existing "all work done" commit in the fork's shared main history.
     // The branch is shared by other PR work, so rewriting its history is unsafe.
     (msg) => msg.trim() === "all work done",
+    // Exempt the two already-pushed CSP commits whose subjects lack conventional types.
+    // Do not rewrite shared branch history just to change their commit messages.
+    (msg) =>
+      msg.trim() === "Cover safe CSP violation telemetry fields" ||
+      msg.trim() === "Fix safe CSP violation telemetry logging",
     // Skip Freebuff bot commits, whose subject is a generated file-change summary
     (msg) => /^\s*Update\s+\d+\s+files/i.test(msg) && /Freebuff Agent/i.test(msg),
   ],
