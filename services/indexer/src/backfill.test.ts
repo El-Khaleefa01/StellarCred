@@ -9,6 +9,7 @@ import * as ingester from "./ingester";
 const CONTRACT = "CCONTRACT";
 
 const config = {
+  stellarNetwork: "testnet",
   horizonUrl: "https://horizon.test",
   proofRegistryContractId: CONTRACT,
   startLedger: 0,
