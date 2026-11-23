@@ -75,11 +75,27 @@ export const SAFE_FIELDS = [
   "traceparent",
 ];
 
+function sanitizeSafeValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sanitizeSafeValue);
+  }
+  if (value !== null && typeof value === "object") {
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, nestedValue] of Object.entries(value)) {
+      if (SAFE_FIELDS.includes(key)) {
+        sanitized[key] = sanitizeSafeValue(nestedValue);
+      }
+    }
+    return sanitized;
+  }
+  return value;
+}
+
 export function stripSensitiveFields<T extends Record<string, unknown>>(obj: T): Partial<T> {
   const result: Partial<T> = {};
-  for (const key in obj) {
+  for (const [key, value] of Object.entries(obj)) {
     if (SAFE_FIELDS.includes(key)) {
-      result[key] = obj[key];
+      (result as Record<string, unknown>)[key] = sanitizeSafeValue(value);
     }
   }
   return result;
