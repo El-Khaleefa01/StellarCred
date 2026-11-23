@@ -1,5 +1,4 @@
 "use client";
-
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -12,7 +11,6 @@ import {
   IconFileExport,
   IconPlus,
 } from "@tabler/icons-react";
-
 import { WalletButton } from "@/components/WalletButton";
 import { WalletOnboarding } from "@/components/WalletOnboarding";
 import { LedgerGuide } from "@/components/LedgerGuide";
@@ -31,7 +29,6 @@ import { useCredentialStore } from "@/lib/hooks/useCredentialStore";
 import { useBatchSelection } from "@/lib/hooks/useBatchSelection";
 import { useImportExport } from "@/lib/hooks/useImportExport";
 import { useProofApproval } from "@/lib/hooks/useProofApproval";
-
 import { CredCard, type BatchSelection } from "@/components/holder/CredCard";
 import { SectionLabel } from "@/components/holder/SectionLabel";
 import { ImportPanel } from "@/components/holder/ImportPanel";
@@ -42,7 +39,6 @@ import { GuardianRecoveryControl } from "@/components/holder/GuardianRecoveryCon
 import { ProofFlowView } from "@/components/holder/ProofFlowView";
 import { BatchProofFlowView } from "@/components/holder/BatchProofFlowView";
 import { CredentialExportPanel } from "@/components/holder/CredentialExportPanel";
-
 // The encrypted-transfer modals are heavy (crypto.ts PBKDF2/AES-GCM, QR
 // rendering) and only needed when the user actually starts a transfer — load
 // them lazily so the holder route's 15 kB bundle budget stays intact.
