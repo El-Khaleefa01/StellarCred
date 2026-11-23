@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { isStorageAvailable } from "./safe-storage";
+import { safeGetItem, safeSetItem } from "./safe-storage";
 
 const STORAGE_KEY = "stellarcred:onboarding";
 const RESET_EVENT = "stellarcred:onboarding:reset";
@@ -32,11 +32,10 @@ const DEFAULT_STATE: OnboardingState = {
 };
 
 function loadState(): OnboardingState {
-  if (!isStorageAvailable()) return DEFAULT_STATE;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = safeGetItem(STORAGE_KEY);
     if (!raw) {
-      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+      const legacy = safeGetItem(LEGACY_STORAGE_KEY);
       if (legacy === "1") {
         return { ...DEFAULT_STATE, dismissed: true };
       }
@@ -54,9 +53,8 @@ function loadState(): OnboardingState {
 }
 
 function saveState(state: OnboardingState): void {
-  if (!isStorageAvailable()) return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    safeSetItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     // storage unavailable — silently fail
   }
