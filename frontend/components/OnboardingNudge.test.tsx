@@ -1,47 +1,60 @@
 // Tests for OnboardingNudge (#899) — the contextual re-entry banner on /holder.
-// Covers every gating branch, the dismiss flow, and the "Continue setup" action.
-
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-  mockOnboardingState: {
-    state: { step: 4, dismissed: false, completed: false },
-    currentStep: "generate-proof" as string,
-    mounted: true,
-    resumeAt: () => {},
-  },
-  mockWallet: { address: "GTEST" as string | null },
-}));
+type MockState = {
+  state: { step: number; dismissed: boolean; completed: boolean };
+  currentStep: string;
+  mounted: boolean;
+  resumeAt: ReturnType<typeof vi.fn>;
+};
 
-vi.mock("@/lib/onboarding", () => ({
-  ONBOARDING_STEPS: [
-    "welcome",
-    "connect-wallet",
-    "get-credential",
-    "verify-trust",
-    "generate-proof",
-    "unlock",
-  ],
-  useOnboarding: () => mocks.mockOnboardingState,
-}));
+let mocks: {
+  mockOnboardingState: MockState;
+  mockWallet: { address: string | null };
+};
+let OnboardingNudge: typeof import("./OnboardingNudge").OnboardingNudge;
 
-vi.mock("@/lib/wallet-context", () => ({
-  useWallet: () => mocks.mockWallet,
-}));
+beforeAll(async () => {
+  mocks = {
+    mockOnboardingState: {
+      state: { step: 4, dismissed: false, completed: false },
+      currentStep: "generate-proof",
+      mounted: true,
+      resumeAt: vi.fn(),
+    },
+    mockWallet: { address: "GTEST" },
+  };
 
-vi.mock("next-intl", () => ({
-  useTranslations: (_ns: string) => (key: string) => {
-    const messages: Record<string, string> = {
-      message: "Complete your setup",
-      continueSetup: "Continue setup",
-      dismiss: "Dismiss nudge",
-    };
-    return messages[key] ?? key;
-  },
-}));
+  // Register non-hoisted mocks before dynamically importing the component.
+  // This avoids accessing transformed static-import bindings during vi.mock hoisting.
+  vi.doMock("@/lib/onboarding", () => ({
+    ONBOARDING_STEPS: [
+      "welcome",
+      "connect-wallet",
+      "get-credential",
+      "verify-trust",
+      "generate-proof",
+      "unlock",
+    ],
+    useOnboarding: () => mocks.mockOnboardingState,
+  }));
+  vi.doMock("@/lib/wallet-context", () => ({
+    useWallet: () => mocks.mockWallet,
+  }));
+  vi.doMock("next-intl", () => ({
+    useTranslations: (_ns: string) => (key: string) => {
+      const messages: Record<string, string> = {
+        message: "Complete your setup",
+        continueSetup: "Continue setup",
+        dismiss: "Dismiss nudge",
+      };
+      return messages[key] ?? key;
+    },
+  }));
 
-import { OnboardingNudge } from "./OnboardingNudge";
+  ({ OnboardingNudge } = await import("./OnboardingNudge"));
+});
 
 beforeEach(() => {
   window.localStorage.clear();
