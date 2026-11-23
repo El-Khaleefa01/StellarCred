@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   loadCredentials,
   lockCredentialStore,
+  markProved,
+  removeCredential,
   saveCredential,
   unlockCredentialStore,
   type Credential,
@@ -115,6 +117,41 @@ async function makeLegacyAtRestEnvelope(passphrase: string, payload: unknown): P
     ciphertext: b64(ciphertext),
   });
 }
+
+describe("credential store concurrent mutations (#905)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    lockCredentialStore();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+    lockCredentialStore();
+  });
+
+  it("preserves independent saves and subsequent updates started concurrently", async () => {
+    await unlockCredentialStore("race-test-passphrase");
+    const first = { ...fixtureCredential("first-value"), commitment: "0xfirst" };
+    const second = { ...fixtureCredential("second-value"), commitment: "0xsecond" };
+
+    await Promise.all([
+      saveCredential(first),
+      saveCredential(second),
+    ]);
+    await Promise.all([
+      markProved("0xfirst", "tx-first"),
+      removeCredential("0xsecond"),
+    ]);
+
+    const stored = await loadCredentials();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({
+      commitment: "0xfirst",
+      value: "first-value",
+      provedTxHash: "tx-first",
+    });
+  });
+});
 
 describe("at-rest migration to the consolidated scheme (#547)", () => {
   beforeEach(() => {
