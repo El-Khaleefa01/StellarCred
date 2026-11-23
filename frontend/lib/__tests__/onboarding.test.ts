@@ -5,30 +5,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useOnboarding, ONBOARDING_STEPS } from "../onboarding";
 
-// localStorage mock — the hook reads/writes state here.
-function mockStorage() {
-  let store: Record<string, string> = {};
-  const ls = {
-    getItem: vi.fn((k: string) => store[k] ?? null),
-    setItem: vi.fn((k: string, v: string) => { store[k] = v; }),
-    removeItem: vi.fn((k: string) => { delete store[k]; }),
-    clear: vi.fn(() => { store = {}; }),
-    get _store() { return store; },
-  };
-  return ls;
-}
-
-let ls: ReturnType<typeof mockStorage>;
+// Use jsdom's real Storage implementation so the storage-availability probe
+// and the hook read/write the same backing store.
+let ls: Storage;
 
 beforeEach(() => {
-  ls = mockStorage();
+  window.localStorage.clear();
+  ls = window.localStorage;
   vi.spyOn(window, "addEventListener");
   vi.spyOn(window, "removeEventListener");
   vi.spyOn(window, "dispatchEvent");
-  Object.defineProperty(window, "localStorage", { configurable: true, value: ls });
 });
 
 afterEach(() => {
+  window.localStorage.clear();
   vi.restoreAllMocks();
 });
 
