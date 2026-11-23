@@ -27,11 +27,11 @@ vi.mock("@/lib/onboarding", () => ({
     "generate-proof",
     "unlock",
   ],
-  useOnboarding: () => getMocks().onboarding,
+  useOnboarding: () => (globalThis as typeof globalThis & { __onboardingNudgeTestMocks: TestMocks }).__onboardingNudgeTestMocks.onboarding,
 }));
 
 vi.mock("@/lib/wallet-context", () => ({
-  useWallet: () => getMocks().wallet,
+  useWallet: () => (globalThis as typeof globalThis & { __onboardingNudgeTestMocks: TestMocks }).__onboardingNudgeTestMocks.wallet,
 }));
 
 vi.mock("next-intl", () => ({
