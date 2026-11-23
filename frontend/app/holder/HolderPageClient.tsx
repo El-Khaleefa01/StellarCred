@@ -120,13 +120,10 @@ function HolderInner() {
     clearSelection,
   } = useBatchSelection(unproved, address, toast.error);
 
-  // Bulk removal is sequential on purpose: removeCredential is a
-  // read-modify-write of the whole list, so concurrent calls would race.
   async function executeBulkRemove(commitments: string[]) {
     for (const commitment of commitments) {
-      await removeCredential(commitment);
+      await remove(commitment);
     }
-    reload();
     clearSelection();
     setConfirmBulkAction(null);
   }
