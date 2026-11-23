@@ -56,7 +56,7 @@ afterEach(() => {
     mounted: true,
     resumeAt: vi.fn(),
   });
-  mocks.mocks.mockWallet.address = "GTEST";
+  mocks.mockWallet.address = "GTEST";
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -75,20 +75,20 @@ describe("OnboardingNudge — gating", () => {
   });
 
   it("returns null when onboarding is completed", () => {
-    mockOnboardingState.state = { step: 5, dismissed: false, completed: true };
+    mocks.mockOnboardingState.state = { step: 5, dismissed: false, completed: true };
     const { container } = render(<OnboardingNudge />);
     expect(container.firstChild).toBeNull();
   });
 
   it("returns null when wallet is not connected", () => {
-    mockWallet.address = null;
+    mocks.mockWallet.address = null;
     const { container } = render(<OnboardingNudge />);
     expect(container.firstChild).toBeNull();
   });
 
   it("returns null when the user has already passed step 4 (generate-proof)", () => {
-    mockOnboardingState.currentStep = "unlock";
-    mockOnboardingState.state = { step: 5, dismissed: false, completed: false };
+    mocks.mockOnboardingState.currentStep = "unlock";
+    mocks.mockOnboardingState.state = { step: 5, dismissed: false, completed: false };
     const { container } = render(<OnboardingNudge />);
     expect(container.firstChild).toBeNull();
   });
