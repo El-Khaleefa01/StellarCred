@@ -2,21 +2,20 @@
 // Covers every gating branch, the dismiss flow, and the "Continue setup" action.
 
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { OnboardingNudge } from "./OnboardingNudge";
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from "vitest";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
 const mocks = vi.hoisted(() => ({
   mockOnboardingState: {
-  state: { step: 4, dismissed: false, completed: false },
-  currentStep: "generate-proof" as string,
-  mounted: true,
-  // Keep the hoisted factory independent of the imported vi binding.
-  resumeAt: () => undefined,
+    state: { step: 4, dismissed: false, completed: false },
+    currentStep: "generate-proof" as string,
+    mounted: true,
+    resumeAt: () => undefined,
   },
   mockWallet: { address: "GTEST" as string | null },
 }));
+
 vi.mock("@/lib/onboarding", () => ({
   ONBOARDING_STEPS: [
     "welcome",
@@ -31,17 +30,22 @@ vi.mock("@/lib/onboarding", () => ({
 vi.mock("@/lib/wallet-context", () => ({
   useWallet: () => mocks.mockWallet,
 }));
-
 vi.mock("next-intl", () => ({
   useTranslations: (_ns: string) => (key: string) => {
-    const msgs: Record<string, string> = {
+    const messages: Record<string, string> = {
       message: "Complete your setup",
       continueSetup: "Continue setup",
       dismiss: "Dismiss nudge",
     };
-    return msgs[key] ?? key;
+    return messages[key] ?? key;
   },
 }));
+
+// Import the component only after Vitest has registered the module mocks.
+let OnboardingNudge: typeof import("./OnboardingNudge").OnboardingNudge;
+beforeAll(async () => {
+  ({ OnboardingNudge } = await import("./OnboardingNudge"));
+});
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -54,12 +58,10 @@ afterEach(() => {
     state: { step: 4, dismissed: false, completed: false },
     currentStep: "generate-proof",
     mounted: true,
-    resumeAt: vi.fn(),
+    resumeAt: () => undefined,
   });
   mocks.mockWallet.address = "GTEST";
 });
-
-// ── Tests ──────────────────────────────────────────────────────────────────
 
 describe("OnboardingNudge — gating", () => {
   it("renders the banner when all conditions are met", () => {
@@ -105,8 +107,7 @@ describe("OnboardingNudge — dismiss", () => {
     const { container } = render(<OnboardingNudge />);
     expect(container.firstChild).not.toBeNull();
 
-    const dismissBtn = screen.getByLabelText("Dismiss nudge");
-    fireEvent.click(dismissBtn);
+    fireEvent.click(screen.getByLabelText("Dismiss nudge"));
 
     expect(container.firstChild).toBeNull();
     expect(window.localStorage.getItem("stellarcred:onboarding-nudge-dismissed")).toBe("1");
