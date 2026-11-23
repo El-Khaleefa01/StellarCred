@@ -23,6 +23,9 @@ module.exports = {
     (msg) => msg.startsWith('# remove duplicated attribute normalization'),
     // Historical cleanup commit used the non-standard "lint" type; exempt it without rewriting branch history.
     (msg) => msg.startsWith("lint: remove unused LoginPage render import"),
+    // Skip the existing "all work done" commit in the fork's shared main history.
+    // The branch is shared by other PR work, so rewriting its history is unsafe.
+    (msg) => msg.trim() === "all work done",
     // Skip Freebuff bot commits, whose subject is a generated file-change summary
     (msg) => /^\s*Update\s+\d+\s+files/i.test(msg) && /Freebuff Agent/i.test(msg),
   ],
