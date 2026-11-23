@@ -2,11 +2,9 @@
 // Covers every gating branch, the dismiss flow, and the "Continue setup" action.
 
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// ── Mocks ──────────────────────────────────────────────────────────────────
-
-const mocks = vi.hoisted(() => ({
+const mocks = {
   mockOnboardingState: {
     state: { step: 4, dismissed: false, completed: false },
     currentStep: "generate-proof" as string,
@@ -14,46 +12,14 @@ const mocks = vi.hoisted(() => ({
     resumeAt: () => undefined,
   },
   mockWallet: { address: "GTEST" as string | null },
-}));
+};
 
-vi.mock("@/lib/onboarding", () => ({
-  ONBOARDING_STEPS: [
-    "welcome",
-    "connect-wallet",
-    "get-credential",
-    "verify-trust",
-    "generate-proof",
-    "unlock",
-  ],
-  useOnboarding: () => mocks.mockOnboardingState,
-}));
-vi.mock("@/lib/wallet-context", () => ({
-  useWallet: () => mocks.mockWallet,
-}));
-vi.mock("next-intl", () => ({
-  useTranslations: (_ns: string) => (key: string) => {
-    const messages: Record<string, string> = {
-      message: "Complete your setup",
-      continueSetup: "Continue setup",
-      dismiss: "Dismiss nudge",
-    };
-    return messages[key] ?? key;
-  },
-}));
-
-// Import the component only after Vitest has registered the module mocks.
 let OnboardingNudge: typeof import("./OnboardingNudge").OnboardingNudge;
-beforeAll(async () => {
-  ({ OnboardingNudge } = await import("./OnboardingNudge"));
-});
 
-beforeEach(() => {
+beforeEach(async () => {
   window.localStorage.clear();
-});
+  vi.resetModules();
 
-afterEach(() => {
-  window.localStorage.clear();
-  vi.clearAllMocks();
   Object.assign(mocks.mockOnboardingState, {
     state: { step: 4, dismissed: false, completed: false },
     currentStep: "generate-proof",
@@ -61,6 +27,44 @@ afterEach(() => {
     resumeAt: () => undefined,
   });
   mocks.mockWallet.address = "GTEST";
+
+  // doMock is intentionally used instead of hoisted vi.mock: these factories
+  // close over this test module's mutable fixtures and are registered before
+  // the component is dynamically imported below.
+  vi.doMock("@/lib/onboarding", () => ({
+    ONBOARDING_STEPS: [
+      "welcome",
+      "connect-wallet",
+      "get-credential",
+      "verify-trust",
+      "generate-proof",
+      "unlock",
+    ],
+    useOnboarding: () => mocks.mockOnboardingState,
+  }));
+  vi.doMock("@/lib/wallet-context", () => ({
+    useWallet: () => mocks.mockWallet,
+  }));
+  vi.doMock("next-intl", () => ({
+    useTranslations: (_ns: string) => (key: string) => {
+      const messages: Record<string, string> = {
+        message: "Complete your setup",
+        continueSetup: "Continue setup",
+        dismiss: "Dismiss nudge",
+      };
+      return messages[key] ?? key;
+    },
+  }));
+
+  ({ OnboardingNudge } = await import("./OnboardingNudge"));
+});
+
+afterEach(() => {
+  window.localStorage.clear();
+  vi.clearAllMocks();
+  vi.doUnmock("@/lib/onboarding");
+  vi.doUnmock("@/lib/wallet-context");
+  vi.doUnmock("next-intl");
 });
 
 describe("OnboardingNudge — gating", () => {
