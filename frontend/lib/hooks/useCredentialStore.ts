@@ -67,9 +67,13 @@ export function useCredentialStore() {
 
     const handleStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY) {
+        // Increment requestId IMMEDIATELY when the event fires, not in the debounced callback.
+        // This ensures that any in-flight mutation that triggered before this storage event
+        // will properly invalidate this reload, preventing stale data from overwriting fresh state.
+        const reqId = ++requestIdRef.current;
+        
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => {
-          const reqId = ++requestIdRef.current;
           loadCredentials().then((loaded) => {
             if (isMountedRef.current && reqId === requestIdRef.current) {
               setCreds(loaded);

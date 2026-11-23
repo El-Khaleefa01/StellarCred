@@ -196,4 +196,50 @@ describe("useCredentialStore - Stale data prevention and functional state update
     expect(result.current.creds).toHaveLength(2);
     expect(result.current.creds.map((c) => c.commitment)).toContain(sampleCred2.commitment);
   });
+
+  it("prevents stale data from cross-tab sync when mutations happen during debounce window", async () => {
+    localStorage.setItem(KEY, JSON.stringify([sampleCred1]));
+    const { result } = renderHook(() => useCredentialStore());
+
+    await waitFor(() => expect(result.current.creds).toHaveLength(1));
+
+    // Simulate a delayed cross-tab storage reload
+    let resolveDelayedReload!: (creds: Credential[]) => void;
+    const delayedReloadPromise = new Promise<Credential[]>((resolve) => {
+      resolveDelayedReload = resolve;
+    });
+
+    vi.spyOn(credentialModule, "loadCredentials").mockImplementationOnce(() => delayedReloadPromise);
+
+    // Simulate a storage event from another tab (this triggers the debounced reload)
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: KEY,
+          newValue: JSON.stringify([sampleCred1, sampleCred2]),
+        })
+      );
+    });
+
+    // Before the debounced reload executes, perform a local mutation
+    act(() => {
+      result.current.save({ ...sampleCred2, commitment: "0xnew" });
+    });
+
+    // State is immediately updated with the new credential
+    expect(result.current.creds.map((c) => c.commitment)).toContain("0xnew");
+
+    // Wait for debounce
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    });
+
+    // Now the delayed reload returns with stale data (without 0xnew)
+    await act(async () => {
+      resolveDelayedReload([sampleCred1, sampleCred2]);
+    });
+
+    // CRITICAL: The stale cross-tab reload MUST NOT overwrite the local mutation
+    expect(result.current.creds.map((c) => c.commitment)).toContain("0xnew");
+  });
 });
