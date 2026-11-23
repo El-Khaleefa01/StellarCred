@@ -86,6 +86,37 @@ describe("telemetry-privacy-regression (#975)", () => {
     expect(serialized).not.toContain(SECRETS.salt);
   });
 
+  it("preserves only approved normalized CSP fields under cspViolation", () => {
+    const logged = stripSensitiveFields({
+      event: "csp_violation",
+      cspViolation: {
+        documentUri: "https://example.com/path",
+        blockedUri: "inline",
+        sourceFile: "https://example.com/app.js",
+        effectiveDirective: "script-src",
+        disposition: "report",
+        lineNumber: 12,
+        columnNumber: 4,
+        statusCode: 200,
+        scriptSample: "secret-code",
+        token: "secret-token",
+        nested: { value: "must-not-leak" },
+      },
+    });
+    expect(logged.cspViolation).toEqual({
+      documentUri: "https://example.com/path",
+      blockedUri: "inline",
+      sourceFile: "https://example.com/app.js",
+      effectiveDirective: "script-src",
+      disposition: "report",
+      lineNumber: 12,
+      columnNumber: 4,
+      statusCode: 200,
+    });
+    expect(JSON.stringify(logged)).not.toContain("secret");
+    expect(JSON.stringify(logged)).not.toContain("must-not-leak");
+  });
+
   it("SAFE_FIELDS allowlist excludes private attributes", () => {
     for (const forbidden of [
       "value",
