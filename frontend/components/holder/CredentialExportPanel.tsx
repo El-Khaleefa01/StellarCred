@@ -20,7 +20,7 @@
  * button (lib/backup.ts) handles that separately.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   IconDownload,
   IconHistory,
@@ -34,6 +34,9 @@ import { loadCredentials, type Credential } from "@/lib/credential";
 import { getSubmissions, type SubmissionRecord } from "@/lib/history";
 import { proofStatus } from "@/lib/proof-helpers";
 import { downloadCredentialExport } from "@/lib/credential-export";
+import { isStorageAvailable } from "@/lib/safe-storage";
+
+const STORAGE_KEY = "stellarcred:credentials";
 
 function formatDate(unixSeconds: number): string {
   const d = new Date(unixSeconds * 1000);
@@ -57,14 +60,46 @@ export function CredentialExportPanel() {
   const [history, setHistory] = useState<SubmissionRecord[]>([]);
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState(false);
+  
+  // Request sequencing to prevent stale data race conditions
+  const requestIdRef = useRef(0);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const refresh = useCallback(() => {
-    loadCredentials().then(setCreds);
+    const reqId = ++requestIdRef.current;
+    loadCredentials().then((loaded) => {
+      if (isMountedRef.current && reqId === requestIdRef.current) {
+        setCreds(loaded);
+      }
+    });
     setHistory(getSubmissions());
   }, []);
 
   useEffect(() => {
     refresh();
+  }, [refresh]);
+
+  // Listen for credential changes from other tabs or store updates
+  useEffect(() => {
+    if (!isStorageAvailable()) return;
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) {
+        refresh();
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+    };
   }, [refresh]);
 
   // Don't render when there are no credentials
