@@ -1,50 +1,74 @@
-/**
- * Admin issuance queue (#850) — Server Component.
- *
- * Lists pending/failed issuance callbacks with filters and retry/resolve
- * actions. Gated server-side by ADMIN_API_KEY (Bearer header or the httpOnly
- * session cookie set via the login form); unauthenticated visitors only see
- * the login form and no queue data is rendered or serialized.
- */
+"use client";
 
-import { isAdminPageAuthorized } from "@/lib/admin-page-auth";
+import { useActionState } from "react";
+import { loginAction, type LoginResult } from "../actions";
+
+export function LoginForm() {
+  const [state, formAction, pending] = useActionState<LoginResult, FormData>(loginAction, {});
+
+  return (
+    <form action={formAction} style={{ display: "grid", gap: "0.5rem", maxWidth: 320 }}>
+      <label>
+        Your name <input name="name" autoComplete="name" maxLength={64} required />
+      </label>
+      <label>
+        Admin key{" "}
+        <input name="key" type="password" autoComplete="current-password" required />
+      </label>
+      <button type="submit" disabled={pending}>
+        {pending ? "Signing in…" : "Sign in"}
+      </button>
+      {state.error && (
+        <p role="alert" style={{ color: "crimson" }}>
+          {state.error}
+        </p>
+      )}
+    </form>
+  );
+}
+import { getAdminSession } from "@/lib/admin-page-auth";
 import { listIssuanceQueue, type QueueStatusFilter } from "@/lib/issuance-queue";
-import { loginAction } from "./actions";
+import { LoginForm } from "./components/LoginForm";
 import { QueueTable } from "./components/QueueTable";
 
 export const dynamic = "force-dynamic";
 
 const STATUSES: QueueStatusFilter[] = ["all", "pending", "failed", "resolved"];
+const MAX_FILTER_LEN = 100;
+const clean = (v?: string) => v?.trim().slice(0, MAX_FILTER_LEN) || undefined;
 
 export default async function AdminIssuancePage({
   searchParams,
 }: {
   searchParams: Promise<{ status?: string; provider?: string; q?: string }>;
 }) {
-  const params = await searchParams;
-  if (!(await isAdminPageAuthorized())) {
+  const session = await getAdminSession();
+  if (!session) {
     return (
       <section aria-labelledby="issuance-login">
         <h2 id="issuance-login">Admin sign-in required</h2>
-        <form action={loginAction} style={{ display: "flex", gap: "0.5rem" }}>
-          <label>
-            Admin key{" "}
-            <input name="key" type="password" autoComplete="off" required />
-          </label>
-          <button type="submit">Sign in</button>
-        </form>
+        <LoginForm />
       </section>
     );
   }
 
+  const params = await searchParams;
   const status = STATUSES.includes(params.status as QueueStatusFilter)
     ? (params.status as QueueStatusFilter)
     : "all";
-  const records = listIssuanceQueue({
-    status,
-    provider: params.provider || undefined,
-    search: params.q || undefined,
-  });
+  const provider = clean(params.provider);
+  const q = clean(params.q);
+
+  let records;
+  try {
+    records = listIssuanceQueue({ status, provider, search: q });
+  } catch (err) {
+    console.error("issuance queue load failed", err);
+    return <p role="alert">Couldn't load the issuance queue. Try again, or check the server logs.</p>;
+  }
+
+  // Send only what the table renders, not full internal records.
+  const rows = records.map(toQueueRowView); // define next to QueueTable
 
   return (
     <section aria-labelledby="issuance-heading">
@@ -54,16 +78,16 @@ export default async function AdminIssuancePage({
       <form method="get" style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
         <select name="status" defaultValue={status} aria-label="Status">
           {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
+            <option key={s} value={s}>{s}</option>
           ))}
         </select>
-        <input name="provider" placeholder="Provider" defaultValue={params.provider ?? ""} />
-        <input name="q" placeholder="Event ID / type" defaultValue={params.q ?? ""} />
+        <input name="provider" aria-label="Provider" placeholder="Provider"
+               defaultValue={provider ?? ""} maxLength={MAX_FILTER_LEN} />
+        <input name="q" aria-label="Event ID or type" placeholder="Event ID / type"
+               defaultValue={q ?? ""} maxLength={MAX_FILTER_LEN} />
         <button type="submit">Filter</button>
       </form>
-      <QueueTable initialRecords={records} />
+      <QueueTable initialRecords={rows} />
     </section>
   );
 }

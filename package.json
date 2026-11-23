@@ -15,6 +15,7 @@
     "credentials:validate": "node --no-warnings --experimental-strip-types scripts/credential-cli.ts validate",
     "credentials:inspect": "node --no-warnings --experimental-strip-types scripts/credential-cli.ts inspect",
     "check:page-client-size": "node .github/scripts/check-page-client-size.mjs",
+    "verify:client-freshness": "bash scripts/verify-client-freshness.sh",
     "ci": "pnpm run check:page-client-size && pnpm run test",
     "test:export": "vitest run src/tests/exportObservability.test.ts"
   },
