@@ -389,6 +389,7 @@ describe("runBackfill edge conditions", () => {
   it("retries a network exception and processes revoked events without persisting unknown events", async () => {
     const { db, asDb } = makeDb();
     let headCalls = 0;
+    let eventCalls = 0;
     const fetchImpl = (async (input: string) => {
       const url = new URL(input);
       if (url.pathname === "/ledgers") {
@@ -396,9 +397,9 @@ describe("runBackfill edge conditions", () => {
         if (headCalls === 1) throw new Error("fetch failed: ECONNRESET");
         return new Response(JSON.stringify({ _embedded: { records: [{ sequence: 1000 }] } }));
       }
-      return new Response(
-        JSON.stringify({ _embedded: { records: [ev(100), ev(110)] } }),
-      );
+      eventCalls++;
+      const records = eventCalls === 1 ? [ev(100), ev(110)] : [];
+      return new Response(JSON.stringify({ _embedded: { records } }));
     }) as unknown as typeof fetch;
 
     jest.spyOn(ingester, "parseEvent").mockImplementation((event) =>
