@@ -361,18 +361,33 @@ async function persistCredentials(next: Credential[]): Promise<void> {
   }
 }
 
+// Serialize read-modify-write operations so overlapping saves, removals, and
+// proof updates cannot persist snapshots based on the same stale store value.
+let credentialWriteQueue: Promise<void> = Promise.resolve();
+
+function serializeCredentialWrite<T>(write: () => Promise<T>): Promise<T> {
+  const result = credentialWriteQueue.then(write, write);
+  credentialWriteQueue = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
+}
+
 /**
  * Save a credential, encrypting the full credential set with the
  * passphrase-derived key. The store must be unlocked first.
  */
-export async function saveCredential(cred: Credential): Promise<Credential[]> {
-  const all = await loadCredentials();
-  const next = [
-    cred,
-    ...all.filter((c) => !(c.type === cred.type && c.commitment === cred.commitment)),
-  ];
-  await persistCredentials(next);
-  return next;
+export function saveCredential(cred: Credential): Promise<Credential[]> {
+  return serializeCredentialWrite(async () => {
+    const all = await loadCredentials();
+    const next = [
+      cred,
+      ...all.filter((c) => !(c.type === cred.type && c.commitment === cred.commitment)),
+    ];
+    await persistCredentials(next);
+    return next;
+  });
 }
 
 /**
@@ -386,14 +401,16 @@ export function createSaveCredentialUpdater(cred: Credential) {
   ];
 }
 
-export async function markProved(commitment: string, txHash: string): Promise<Credential[]> {
-  const all = await loadCredentials();
-  const now = Math.floor(Date.now() / 1000);
-  const next = all.map((c) =>
-    c.commitment === commitment ? { ...c, provedAt: now, provedTxHash: txHash } : c,
-  );
-  await persistCredentials(next);
-  return next;
+export function markProved(commitment: string, txHash: string): Promise<Credential[]> {
+  return serializeCredentialWrite(async () => {
+    const all = await loadCredentials();
+    const now = Math.floor(Date.now() / 1000);
+    const next = all.map((c) =>
+      c.commitment === commitment ? { ...c, provedAt: now, provedTxHash: txHash } : c,
+    );
+    await persistCredentials(next);
+    return next;
+  });
 }
 
 /**
@@ -410,15 +427,17 @@ export function createMarkProvedUpdater(commitment: string, txHash: string) {
 }
 
 /** Mark multiple credentials as proved in a single localStorage write. */
-export async function markAllProved(commitments: string[], txHash: string): Promise<Credential[]> {
-  const set = new Set(commitments);
-  const now = Math.floor(Date.now() / 1000);
-  const all = await loadCredentials();
-  const next = all.map((c) =>
-    set.has(c.commitment) ? { ...c, provedAt: now, provedTxHash: txHash } : c,
-  );
-  await persistCredentials(next);
-  return next;
+export function markAllProved(commitments: string[], txHash: string): Promise<Credential[]> {
+  return serializeCredentialWrite(async () => {
+    const set = new Set(commitments);
+    const now = Math.floor(Date.now() / 1000);
+    const all = await loadCredentials();
+    const next = all.map((c) =>
+      set.has(c.commitment) ? { ...c, provedAt: now, provedTxHash: txHash } : c,
+    );
+    await persistCredentials(next);
+    return next;
+  });
 }
 
 /**
@@ -434,18 +453,20 @@ export function createMarkAllProvedUpdater(commitments: string[], txHash: string
     );
 }
 
-export async function removeCredential(commitment: string): Promise<Credential[]> {
-  const all = await loadCredentials();
-  const next = all.filter((c) => c.commitment !== commitment);
-  await persistCredentials(next);
-  if (typeof window !== "undefined") {
-    try {
-      removeCredentialProofs(commitment);
-    } catch {
-      // storage unavailable or non-browser environment
+export function removeCredential(commitment: string): Promise<Credential[]> {
+  return serializeCredentialWrite(async () => {
+    const all = await loadCredentials();
+    const next = all.filter((c) => c.commitment !== commitment);
+    await persistCredentials(next);
+    if (typeof window !== "undefined") {
+      try {
+        removeCredentialProofs(commitment);
+      } catch {
+        // storage unavailable or non-browser environment
+      }
     }
-  }
-  return next;
+    return next;
+  });
 }
 
 /**
@@ -458,21 +479,23 @@ export function createRemoveCredentialUpdater(commitment: string) {
 }
 
 /** Remove multiple credentials in a single storage write. */
-export async function removeCredentials(commitments: string[]): Promise<Credential[]> {
-  const set = new Set(commitments);
-  const all = await loadCredentials();
-  const next = all.filter((c) => !set.has(c.commitment));
-  await persistCredentials(next);
-  if (typeof window !== "undefined") {
-    try {
-      for (const commitment of commitments) {
-        removeCredentialProofs(commitment);
+export function removeCredentials(commitments: string[]): Promise<Credential[]> {
+  return serializeCredentialWrite(async () => {
+    const set = new Set(commitments);
+    const all = await loadCredentials();
+    const next = all.filter((c) => !set.has(c.commitment));
+    await persistCredentials(next);
+    if (typeof window !== "undefined") {
+      try {
+        for (const commitment of commitments) {
+          removeCredentialProofs(commitment);
+        }
+      } catch {
+        // storage unavailable or non-browser environment
       }
-    } catch {
-      // storage unavailable or non-browser environment
     }
-  }
-  return next;
+    return next;
+  });
 }
 
 /**
