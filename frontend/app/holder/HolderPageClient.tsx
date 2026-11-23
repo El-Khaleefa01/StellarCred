@@ -22,7 +22,7 @@ import { useToast } from "@/components/Toast";
 import { useWallet, usePreviewMode } from "@/lib/wallet-context";
 import { PREVIEW_CREDENTIALS } from "@/lib/preview-fixtures";
 import { IMPORT_PARAM } from "@/lib/transfer";
-import { removeCredential, type Credential } from "@/lib/credential";
+import { type Credential } from "@/lib/credential";
 import { proofStatus, isExpiringSoon, daysRemaining } from "@/lib/proof-helpers";
 import { useWarmProver } from "@/lib/use-warm-prover";
 import { useCredentialStore } from "@/lib/hooks/useCredentialStore";
