@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { safeGetItem, safeSetItem } from "./safe-storage";
 
 const STORAGE_KEY = "stellarcred:onboarding";
 const RESET_EVENT = "stellarcred:onboarding:reset";
@@ -35,32 +36,15 @@ const DEFAULT_STATE: OnboardingState = {
   completed: false,
 };
 
-function readStorage(key: string): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeStorage(key: string, value: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    // Storage can be unavailable in private or restricted browsing contexts.
-  }
-}
-
 function loadState(): OnboardingState {
   try {
-    const raw = readStorage(STORAGE_KEY);
+    const raw = safeGetItem(STORAGE_KEY);
     if (!raw) {
-      return readStorage(LEGACY_STORAGE_KEY) === "1"
+      return safeGetItem(LEGACY_STORAGE_KEY) === "1"
         ? { ...DEFAULT_STATE, dismissed: true }
         : DEFAULT_STATE;
     }
+
     const parsed = JSON.parse(raw) as Partial<OnboardingState>;
     return {
       step:
@@ -76,7 +60,7 @@ function loadState(): OnboardingState {
 }
 
 function saveState(state: OnboardingState): void {
-  writeStorage(STORAGE_KEY, JSON.stringify(state));
+  safeSetItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 export function shouldShowOnboarding(): boolean {
@@ -92,10 +76,13 @@ export function resetOnboarding(): void {
 }
 
 export function useOnboarding() {
-  const [state, setState] = useState<OnboardingState>(loadState);
+  // Read persisted state after mount to keep server and client initial renders
+  // identical while still hydrating the user's progress from localStorage.
+  const [state, setState] = useState<OnboardingState>(DEFAULT_STATE);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setState(loadState());
     setMounted(true);
 
     function onReset() {
@@ -122,11 +109,11 @@ export function useOnboarding() {
 
   const nextStep = useCallback(() => {
     setState((prev) => {
-      const nextStep = prev.step + 1;
+      const nextStepIndex = prev.step + 1;
       const next =
-        nextStep >= ONBOARDING_STEPS.length
+        nextStepIndex >= ONBOARDING_STEPS.length
           ? { ...prev, step: ONBOARDING_STEPS.length - 1, completed: true }
-          : { ...prev, step: nextStep };
+          : { ...prev, step: nextStepIndex };
       saveState(next);
       return next;
     });
